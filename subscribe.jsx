@@ -17,9 +17,10 @@ export default function SubscribePage() {
       <h1>Join WillpowerFitness AI</h1>
       <p>Train smarter. Think stronger. Move better.</p>
       <stripe-buy-button
-        buy-button-id="buy_btn_1Rk2WBIw2TDvX8io8lvj2TXd"
-        publishable-key="pk_live_51RWp4dIw2TDvX8i0Jcm21OH32WTmtKkOvoD2mKiHfKIZDK7AdiLCWQSDxLoVOBJzR1MLP0OoKt1lW1PTF9MGGEAZS00ylxj6tAS"
-      ></stripe-buy-button>
+        buy-button-id="buy_btn_1Rk2WBIw2TDvX8iO81vJ2TXd"
+        publishable-key="pk_live_51RWp4dIw2TDvX8iOJcm21OH32WTmtKkOvoD2mKiHfKIZDK7AdiLCWQSDxLoVOBJzR1MLP0OoKtI1W1PTF9MGGEAZS00ylxj6tAS"
+      >
+      </stripe-buy-button>
     </div>
   );
 }
