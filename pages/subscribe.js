@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useEffect } from 'react';
 
 export default function SubscribePage() {
@@ -16,10 +15,10 @@ export default function SubscribePage() {
     <div style={{ padding: '4rem', textAlign: 'center' }}>
       <h1>Join WillpowerFitness AI</h1>
       <p>Train smarter. Think stronger. Move better.</p>
+
       <stripe-buy-button
-        buy-button-id="buy_btn_1Rk2WBIw2TDvX8iO81vJ2TXd"
-        publishable-key="pk_live_51RWp4dIw2TDvX8iOJcm21OH32WTmtKkOvoD2mKiHfKIZDK7AdiLCWQSDxLoVOBJzR1MLP0OoKtI1W1PTF9MGGEAZS00ylxj6tAS"
-      >
+        buy-button-id="buy_btn_1Rk2BwIW2TDvX8i08lvj2TXd"
+        publishable-key="pk_live_51RWp4dIw2TDvX8i03Cm21H03ZhWTmtkK0voD2mKiHfKIZDK7AdILcWQSDxLOv0BJzR1MLP00Kt1IW1PTf9MGGEAZS00y1xj6tAS">
       </stripe-buy-button>
     </div>
   );
