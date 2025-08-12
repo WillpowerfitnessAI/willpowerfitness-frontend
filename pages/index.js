@@ -1,19 +1,29 @@
-import { useState } from 'react'
-import { supabase } from '../utils/supabaseClient'
+// pages/index.js
+import { useState } from 'react';
+import { supabase } from '../utils/supabaseClient';
 
 export default function Home() {
-  const [name, setName] = useState('')
-  const [goal, setGoal] = useState('')
-  
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    const { data, error } = await supabase
-      .from('clients')
-      .insert({ name, goal })
-    if (error) console.error('Supabase error:', error)
-    else {
-      console.log('Saved:', data)
-      window.location.href = '/subscribe'
+  const [name, setName] = useState('');
+  const [goal, setGoal] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .insert([{ name, goal }])   // array form + safe
+        .select();                  // return inserted rows
+
+      if (error) throw error;
+      console.log('Saved:', data);
+      window.location.href = '/subscribe'; // keep it simple
+    } catch (err) {
+      console.error('Supabase insert failed:', err);
+      alert('Could not save your info. Please try again.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -25,19 +35,21 @@ export default function Home() {
           type="text"
           placeholder="Your Name"
           value={name}
-          onChange={e => setName(e.target.value)}
+          onChange={(e) => setName(e.target.value)}
           required
           style={{ display: 'block', margin: '0.5rem 0' }}
         />
         <textarea
           placeholder="Your Fitness Goals"
           value={goal}
-          onChange={e => setGoal(e.target.value)}
+          onChange={(e) => setGoal(e.target.value)}
           required
           style={{ display: 'block', margin: '0.5rem 0' }}
         />
-        <button type="submit">Continue</button>
+        <button type="submit" disabled={loading}>
+          {loading ? 'Saving…' : 'Continue'}
+        </button>
       </form>
     </div>
-  )
+  );
 }
