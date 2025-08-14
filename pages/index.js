@@ -1,6 +1,7 @@
 // pages/index.js
 import { useState } from 'react';
-import { supabase } from '../utils/supabaseClient';
+
+const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function Home() {
   const [name, setName] = useState('');
@@ -11,16 +12,15 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .insert([{ name, goal }])   // array form + safe
-        .select();                  // return inserted rows
-
-      if (error) throw error;
-      console.log('Saved:', data);
-      window.location.href = '/subscribe'; // keep it simple
+      const r = await fetch(`${API}/api/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, goal }),
+      });
+      if (!r.ok) throw new Error(`API ${r.status}`);
+      window.location.href = '/subscribe';
     } catch (err) {
-      console.error('Supabase insert failed:', err);
+      console.error('Lead submit failed:', err);
       alert('Could not save your info. Please try again.');
     } finally {
       setLoading(false);
@@ -53,3 +53,4 @@ export default function Home() {
     </div>
   );
 }
+
