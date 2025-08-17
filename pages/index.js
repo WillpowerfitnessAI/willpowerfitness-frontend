@@ -1,56 +1,29 @@
 // pages/index.js
-import { useState } from 'react';
-
-const API = process.env.NEXT_PUBLIC_API_BASE_URL;
+import Layout from '../components/Layout';
 
 export default function Home() {
-  const [name, setName] = useState('');
-  const [goal, setGoal] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const r = await fetch(`${API}/api/leads`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, goal }),
-      });
-      if (!r.ok) throw new Error(`API ${r.status}`);
-      window.location.href = '/subscribe';
-    } catch (err) {
-      console.error('Lead submit failed:', err);
-      alert('Could not save your info. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>Welcome to WillpowerFitness AI</h1>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Your Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          style={{ display: 'block', margin: '0.5rem 0' }}
-        />
-        <textarea
-          placeholder="Your Fitness Goals"
-          value={goal}
-          onChange={(e) => setGoal(e.target.value)}
-          required
-          style={{ display: 'block', margin: '0.5rem 0' }}
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? 'Saving…' : 'Continue'}
-        </button>
-      </form>
-    </div>
+    <Layout>
+      <section className="hero">
+        <h1 style={{fontSize:44, marginBottom:8}}>
+          Your 24/7 no-nonsense AI Trainer.
+        </h1>
+        <p style={{maxWidth:680, opacity:.85}}>
+          WillpowerFitness AI is your always-on coach—firm, pragmatic, with a hint of jocularity.
+          Training, nutrition, recovery, and accountability—integrated and adaptive.
+        </p>
+        <div style={{marginTop:24, display:'flex', gap:12}}>
+          <a className="btn btn--primary" href="/consultation">Start free consultation</a>
+          <a className="btn btn--outline" href="/subscribe">See membership</a>
+        </div>
+
+        <div style={{marginTop:28}} className="grid grid-2">
+          <div className="card"><strong>Elite AI Coaching</strong><br/><small className="muted">Dynamic adjustments, biomechanics, RPE-aware.</small></div>
+          <div className="card"><strong>Relationship Builder</strong><br/><small className="muted">Learns preferences & motivation style over time.</small></div>
+          <div className="card"><strong>Lifestyle Integration</strong><br/><small className="muted">Nutrition, sleep, stress, recovery—end-to-end.</small></div>
+          <div className="card"><strong>White-label Pro</strong><br/><small className="muted">Your brand, your domain, premium UX.</small></div>
+        </div>
+      </section>
+    </Layout>
   );
 }
-
