@@ -34,7 +34,7 @@ export default function Consultation(){
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({unit:'pt', format:'letter'});
     const margin = 48; let y = margin;
-    doc.setFont('Times','Normal'); doc.setFontSize(18);
+    doc.setFont('times','normal'); doc.setFontSize(18);
     doc.text('WillpowerFitness AI — Consultation Plan', margin, y); y+=24;
     doc.setFontSize(12);
     const lines = doc.splitTextToSize(plan || 'No plan.', 515);
