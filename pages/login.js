@@ -1,7 +1,7 @@
 // pages/login.js
 import Layout from '../components/Layout';
 import { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../utils/supabaseClient';
 
 export default function Login() {
   const [email, setEmail] = useState('');
