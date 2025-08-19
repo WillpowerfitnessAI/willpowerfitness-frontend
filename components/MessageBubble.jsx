@@ -1,12 +1,20 @@
-import React from "react";
+// components/MessageBubble.jsx
+import React from 'react';
 
 export default function MessageBubble({ role, text }) {
-  const mine = role === "user";
+  const mine = role === 'user';
   return (
-    <div className={`mb-2 flex ${mine ? "justify-end" : "justify-start"}`}>
+    <div style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
       <div
-        className={`${mine ? "bg-blue-500 text-white" : "bg-gray-300 text-black"} px-4 py-2 rounded-lg`}
-        style={{ whiteSpace: "pre-wrap", maxWidth: "75%" }}
+        className={mine ? 'bubble bubble--me' : 'bubble bubble--bot'}
+        style={{
+          background: mine ? '#1f2937' : '#111827',
+          color: '#fff',
+          padding: '10px 12px',
+          borderRadius: 12,
+          maxWidth: '75%',
+          whiteSpace: 'pre-wrap',
+        }}
       >
         {text}
       </div>
