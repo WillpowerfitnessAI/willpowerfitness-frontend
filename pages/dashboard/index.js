@@ -1,6 +1,6 @@
 import Layout from '../../components/Layout.jsx';
 import RequireMember from '../../components/RequireMember.jsx';
-import ChatBox from '../../components/ChatBox'; // resolves to /components/ChatBox/index.jsx
+import ChatBox from '../../components/ChatBox'; // folder import -> index.jsx
 
 export default function Dashboard() {
   return (
