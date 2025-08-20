@@ -1,7 +1,7 @@
 // pages/dashboard/index.js
-import Layout from '../../components/Layout';
-import RequireMember from '../../components/RequireMember';
-import ChatBox from '../../components/ChatBox'; // <- Exact case, no extension needed
+import Layout from '../../components/Layout.jsx';
+import RequireMember from '../../components/RequireMember.jsx';
+import ChatBox from '../../components/ChatBox.jsx'; // <- exact case + extension
 
 export default function Dashboard() {
   return (
@@ -13,7 +13,7 @@ export default function Dashboard() {
         <div className="grid gap-4" style={{ marginTop: 16 }}>
           <div className="card">
             <strong>Check-in</strong>
-            <p className="muted">Log RPE, soreness, sleep. We’ll auto-adjust.</p>
+            <p className="muted">Log RPE, soreness, sleep. We'll auto-adjust.</p>
             <a className="btn btn-primary" href="/dashboard/checkin">Go to check-in</a>
           </div>
 
@@ -27,10 +27,11 @@ export default function Dashboard() {
         {/* Coach chat */}
         <section style={{ marginTop: 24 }}>
           <h2>Chat with coach/AI</h2>
-          <ChatBox /> {/* <- Uppercase component */}
+          <ChatBox /> {/* Uppercase React component */}
         </section>
       </Layout>
     </RequireMember>
   );
 }
+
 
