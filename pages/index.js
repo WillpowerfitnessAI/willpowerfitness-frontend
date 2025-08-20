@@ -1,6 +1,6 @@
 // pages/index.js
 import Layout from '../components/Layout';
-
+// deploy bump
 export default function Home() {
   return (
     <Layout>
