@@ -16,9 +16,7 @@ export default async function handler(req, res) {
     if (have.STRIPE_SECRET_KEY && have.STRIPE_PRICE_ID) {
       try {
         const { default: Stripe } = await import('stripe');
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-          apiVersion: '2024-06-20',
-        });
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
         const price = await stripe.prices.retrieve(process.env.STRIPE_PRICE_ID);
         stripePriceOk = !!price?.id;
       } catch (e) {
@@ -37,3 +35,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ ok: false, error: e?.message || String(e) });
   }
 }
+
