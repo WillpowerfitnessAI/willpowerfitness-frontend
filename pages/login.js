@@ -1,118 +1,79 @@
 // pages/login.js
-import Head from "next/head";
-import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import Layout from "../components/Layout";
-import { supabase } from "../utils/supabaseClient";
-
-const SITE =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "");
+import { useState } from 'react';
+import Layout from '../components/Layout.jsx';
 
 export default function Login() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
 
-  // If the user is already logged in, go to the dashboard.
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data?.session) router.replace("/dashboard");
-    });
-  }, [router]);
-
-  async function onSubmit(e) {
+  async function requestLoginLink(e) {
     e.preventDefault();
-    setSending(true);
-    setError("");
-    setSent(false);
+    setMsg('');
+    if (!email) return setMsg('Enter your email.');
 
     try {
-      const { error: err } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${SITE}/dashboard`,
-        },
+      setBusy(true);
+      const res = await fetch('/api/login-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
+      const data = await res.json();
 
-      if (err) {
-        // Friendly copy for non-members
-        if (
-          /user.*not.*found/i.test(err.message) ||
-          /invalid.*email/i.test(err.message)
-        ) {
-          setError(
-            "This is a members-only space. We couldn’t find an account for that email."
-          );
+      if (!res.ok) {
+        if (data?.error === 'not_subscribed') {
+          setMsg('No active membership found for this email. Start a trial or subscribe.');
+        } else if (data?.error === 'invalid_email') {
+          setMsg('That email looks invalid.');
         } else {
-          setError(err.message);
+          setMsg('Could not send login link. Try again.');
         }
         return;
       }
 
-      setSent(true);
+      // Direct login: jump to the Supabase magic link (no email click needed)
+      if (data?.login_url) {
+        window.location.assign(data.login_url);
+      } else {
+        setMsg('Login link not available. Try again.');
+      }
+    } catch {
+      setMsg('Network error. Try again.');
     } finally {
-      setSending(false);
+      setBusy(false);
     }
   }
 
   return (
-    <Layout title="Member Login">
-      <Head>
-        {/* keep the login page out of search results */}
-        <meta name="robots" content="noindex, nofollow" />
-      </Head>
-
-      <div style={{ maxWidth: 440, margin: "40px auto" }}>
+    <Layout title="Member login">
+      <main style={{ padding: 24, maxWidth: 720 }}>
         <h1>Member login</h1>
-        <p className="muted" style={{ marginTop: 4 }}>
-          If you’re a paying client, enter your email and we’ll send a one-time
-          login link.
-        </p>
+        <p>If you’re a paying client, enter your email and we’ll sign you in.</p>
 
-        <form onSubmit={onSubmit} style={{ marginTop: 16 }}>
-          <label className="label">Email</label>
+        <form onSubmit={requestLoginLink} style={{ marginTop: 16 }}>
           <input
-            className="input"
             type="email"
-            required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            onChange={e => setEmail(e.target.value)}
+            placeholder="you@domain.com"
+            className="input"
+            style={{ width: 360, marginRight: 8 }}
           />
-
-          <button
-            className="btn btn--primary"
-            type="submit"
-            disabled={sending}
-            style={{ marginTop: 12 }}
-          >
-            {sending ? "Sending…" : "Email me a login link"}
+          <button className="btn btn-primary" disabled={busy}>
+            {busy ? 'Working…' : 'Email me a login link'}
           </button>
         </form>
 
-        {sent && (
-          <p className="success" style={{ marginTop: 12 }}>
-            Check your inbox for a secure login link.
-          </p>
-        )}
-        {error && (
-          <p className="error" style={{ marginTop: 12 }}>
-            {error}
-          </p>
-        )}
+        {msg && <p style={{ marginTop: 12 }}>{msg}</p>}
 
-        <hr style={{ opacity: 0.2, margin: "24px 0" }} />
+        <hr style={{ margin: '24px 0', opacity: 0.2 }} />
 
-        <p className="muted">
-          Not a member yet?{" "}
-          <a className="link" href="/subscribe">
-            See membership →
-          </a>
+        <p>
+          Not a member yet? <a href="/subscribe">See membership</a>
         </p>
-      </div>
+      </main>
     </Layout>
   );
 }
+
