@@ -1,7 +1,7 @@
 import Layout from '../../components/Layout.jsx';
 import RequireMember from '../../components/RequireMember.jsx';
 import ChatBox from '../../components/ChatBox'; // folder import -> index.jsx
-
+// trigger vercel
 export default function Dashboard() {
   return (
     <RequireMember>
