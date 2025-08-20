@@ -1,7 +1,7 @@
 // pages/dashboard/index.js
 import Layout from '../../components/Layout.jsx';
 import RequireMember from '../../components/RequireMember.jsx';
-import ChatBox from '../../components/ChatBox.jsx'; // <- exact case + extension
+import ChatBox from '../../components/ChatBox'; 
 
 export default function Dashboard() {
   return (
