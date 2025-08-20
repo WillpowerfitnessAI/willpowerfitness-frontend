@@ -1,22 +1,24 @@
-// components/ChatBox.js
+// components/ChatBox.jsx
 'use client';
+
 import React, { useState } from 'react';
-import MessageBubble from './MessageBubble.jsx'; // note the .jsx
+import MessageBubble from './MessageBubble.jsx';
 
 export default function ChatBox() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Hey coach—what do you want to work on today?' }
+    { role: 'assistant', text: 'Hey coach—what do you want to work on today?' },
   ]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [pending, setPending] = useState(false);
 
   async function handleSend() {
-    const userMsg = { role: 'user', text: input.trim() };
-    if (!userMsg.text || loading) return;
+    const text = input.trim();
+    if (!text || pending) return;
 
-    setMessages(m => [...m, userMsg]);
+    const userMsg = { role: 'user', text };
+    setMessages((m) => [...m, userMsg]);
     setInput('');
-    setLoading(true);
+    setPending(true);
 
     try {
       const res = await fetch('/api/chat', {
@@ -24,16 +26,17 @@ export default function ChatBox() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: messages.concat(userMsg).map(({ role, text }) => ({ role, content: text })),
-          provider: process.env.NEXT_PUBLIC_LLM_PROVIDER || 'openai'
-        })
+          provider: process.env.NEXT_PUBLIC_LLM_PROVIDER || 'openai',
+        }),
       });
+
       const data = await res.json();
-      const reply = data?.reply || "Sorry—couldn’t reach the coach.";
-      setMessages(m => [...m, { role: 'assistant', text: reply }]);
+      const reply = data?.reply || "Sorry—couldn't reach the coach.";
+      setMessages((m) => [...m, { role: 'assistant', text: reply }]);
     } catch {
-      setMessages(m => [...m, { role: 'assistant', text: 'Network error. Please try again.' }]);
+      setMessages((m) => [...m, { role: 'assistant', text: 'Network error. Please try again.' }]);
     } finally {
-      setLoading(false);
+      setPending(false);
     }
   }
 
@@ -48,14 +51,15 @@ export default function ChatBox() {
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <input
           className="input"
-          placeholder="Type your message…"
+          placeholder={pending ? 'Sending…' : 'Type your message…'}
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          disabled={pending}
           style={{ flex: 1 }}
         />
-        <button className="btn btn--primary" onClick={handleSend} disabled={loading}>
-          {loading ? 'Sending…' : 'Send'}
+        <button className="btn btn--primary" onClick={handleSend} disabled={pending}>
+          Send
         </button>
       </div>
     </div>
