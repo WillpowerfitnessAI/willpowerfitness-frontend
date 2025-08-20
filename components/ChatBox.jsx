@@ -1,6 +1,6 @@
 // components/ChatBox.jsx
 import React, { useEffect, useRef, useState } from 'react';
-import MessageBubble from './MessageBubble';
+import MessageBubble from './MessageBubble.jsx'; // explicit extension so resolver can't guess wrong
 
 export default function ChatBox() {
   const [messages, setMessages] = useState([
@@ -26,7 +26,7 @@ export default function ChatBox() {
     setSending(true);
 
     try {
-      // TODO: swap to your real API endpoint
+      // Swap this to your real API endpoint when ready
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
