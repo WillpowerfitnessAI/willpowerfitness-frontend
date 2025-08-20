@@ -1,38 +1,37 @@
-// pages/api/diag.js
+// /pages/api/diag.js
 export const config = { runtime: 'nodejs' };
 
+import OpenAI from 'openai';
+
 export default async function handler(req, res) {
-  try {
-    const have = {
-      STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
-      STRIPE_PRICE_ID: !!process.env.STRIPE_PRICE_ID,
-      SUPABASE_URL: !!process.env.SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    };
+  const env_present = {
+    STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
+    STRIPE_PRICE_ID: !!process.env.STRIPE_PRICE_ID,
+    SUPABASE_URL: !!process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+    LLM_MODEL: process.env.LLM_MODEL || null,
+  };
 
-    let stripePriceOk = false;
-    let stripeMsg = null;
+  let model_ok = false;
+  let model_note = null;
 
-    if (have.STRIPE_SECRET_KEY && have.STRIPE_PRICE_ID) {
-      try {
-        const { default: Stripe } = await import('stripe');
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
-        const price = await stripe.prices.retrieve(process.env.STRIPE_PRICE_ID);
-        stripePriceOk = !!price?.id;
-      } catch (e) {
-        stripeMsg = e?.message || String(e);
-      }
+  if (env_present.OPENAI_API_KEY) {
+    try {
+      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const testModel = process.env.LLM_MODEL || 'gpt-4o-mini'; // safe default
+      await client.responses.create({ model: testModel, input: 'ping' });
+      model_ok = true;
+    } catch (e) {
+      model_note = String(e?.message || e);
     }
-
-    return res.status(200).json({
-      ok: true,
-      env_present: have,
-      stripe_price_ok: stripePriceOk,
-      stripe_note: stripeMsg,
-      runtime: process.version,
-    });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e?.message || String(e) });
   }
-}
 
+  return res.status(200).json({
+    ok: true,
+    env_present,
+    model_ok,
+    model_note,
+    runtime: process.version,
+  });
+}
