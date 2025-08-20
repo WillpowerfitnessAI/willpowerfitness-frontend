@@ -1,7 +1,14 @@
-async function startTrial() {
-  const r = await fetch("/api/checkout", { method: "POST" });
-  const j = await r.json();
-  if (j.url) window.location = j.url;
-  else alert(j.error || "Checkout error");
+// pages/subscribe.js
+import Layout from '../components/Layout.jsx';
+
+export default function Subscribe() {
+  return (
+    <Layout title="Subscribe">
+      <main style={{ padding: 24 }}>
+        <h1>Subscribe</h1>
+        <p>Join WillpowerFitness AI to unlock coaching, custom plans, and progress tracking.</p>
+        <a className="btn btn-primary" href="/checkout">Go to Checkout</a>
+      </main>
+    </Layout>
+  );
 }
-<button className="btn btn--primary" onClick={startTrial}>Start Trial</button>
