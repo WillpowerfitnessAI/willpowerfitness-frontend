@@ -11,6 +11,7 @@ function formatUnixDate(unixSeconds) {
 export default function Success() {
   const [state, setState] = useState({ loading: true, error: null, info: null });
 
+  // 1) Confirm the session with Stripe
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('session_id');
@@ -32,6 +33,26 @@ export default function Success() {
   }, []);
 
   const { loading, error, info } = state;
+
+  // 2) Auto-login once we know the customer email (hands-free)
+  useEffect(() => {
+    if (!info?.customer_email) return;
+    (async () => {
+      try {
+        const r = await fetch('/api/login-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: info.customer_email }),
+        });
+        const d = await r.json();
+        if (r.ok && d?.login_url) {
+          window.location.assign(d.login_url); // lands on /dashboard after Supabase
+        }
+      } catch {
+        // ignore; the manual button still works
+      }
+    })();
+  }, [info]);
 
   return (
     <Layout title="Success">
@@ -63,7 +84,8 @@ export default function Success() {
               <p>Your subscription status is <strong>{info.subscription_status || info.payment_status}</strong>.</p>
             )}
             <p>We’ve got you—next step is your dashboard.</p>
-            <a className="btn btn-primary" href="/dashboard">Go to Dashboard</a>
+            {/* Fallback button in case auto-login didn’t trigger */}
+            <a className="btn btn-primary" href="/login">Go to Dashboard</a>
           </>
         )}
       </main>
