@@ -1,68 +1,89 @@
 // components/ChatBox.jsx
-'use client';
-
-import React, { useState } from 'react';
-import MessageBubble from './MessageBubble.jsx';
+import React, { useEffect, useRef, useState } from 'react';
+import MessageBubble from './MessageBubble';
 
 export default function ChatBox() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Hey coach—what do you want to work on today?' },
+    { role: 'assistant', text: 'Welcome. What’s your fitness big objective?' }
   ]);
   const [input, setInput] = useState('');
-  const [pending, setPending] = useState(false);
+  const [sending, setSending] = useState(false);
+  const listRef = useRef(null);
 
-  async function handleSend() {
-    const text = input.trim();
-    if (!text || pending) return;
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [messages]);
 
-    const userMsg = { role: 'user', text };
-    setMessages((m) => [...m, userMsg]);
+  async function sendMessage(e) {
+    e.preventDefault();
+    if (!input.trim() || sending) return;
+
+    const userMsg = { role: 'user', text: input.trim() };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setPending(true);
+    setSending(true);
 
     try {
+      // TODO: swap to your real API endpoint
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: messages.concat(userMsg).map(({ role, text }) => ({ role, content: text })),
-          provider: process.env.NEXT_PUBLIC_LLM_PROVIDER || 'openai',
-        }),
+        body: JSON.stringify({ message: userMsg.text })
       });
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const reply = data?.reply || "Sorry—couldn't reach the coach.";
-      setMessages((m) => [...m, { role: 'assistant', text: reply }]);
-    } catch {
-      setMessages((m) => [...m, { role: 'assistant', text: 'Network error. Please try again.' }]);
+
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', text: data.reply ?? 'OK.' }
+      ]);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', text: 'Sorry—something went wrong. Try again.' }
+      ]);
     } finally {
-      setPending(false);
+      setSending(false);
     }
   }
 
   return (
-    <div style={{ padding: 16 }}>
-      <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+    <div className="card" style={{ padding: 16 }}>
+      <div
+        ref={listRef}
+        style={{
+          height: 320,
+          overflowY: 'auto',
+          border: '1px solid #eee',
+          borderRadius: 12,
+          padding: 12,
+          marginBottom: 12
+        }}
+      >
         {messages.map((m, i) => (
           <MessageBubble key={i} role={m.role} text={m.text} />
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <input
-          className="input"
-          placeholder={pending ? 'Sending…' : 'Type your message…'}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          disabled={pending}
-          style={{ flex: 1 }}
-        />
-        <button className="btn btn--primary" onClick={handleSend} disabled={pending}>
-          Send
-        </button>
-      </div>
+      <form onSubmit={sendMessage}>
+        <div className="flex" style={{ gap: 8 }}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={sending ? 'Sending…' : 'Type a message'}
+            disabled={sending}
+            className="input"
+            style={{ flex: 1 }}
+          />
+          <button className="btn btn-primary" disabled={sending}>
+            {sending ? '…' : 'Send'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
-
