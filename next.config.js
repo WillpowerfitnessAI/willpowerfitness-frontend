@@ -1,7 +1,3 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true
-  // Don’t override webpack loaders or resolve.extensions here.
-};
-
+const nextConfig = { reactStrictMode: true };
 module.exports = nextConfig;
