@@ -5,10 +5,9 @@ export default function Checkout() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/checkout', {
-          method: 'POST',
-          headers: { Accept: 'application/json' },
-        });
+        // Forward any query string like ?trial=2 to the API
+        const query = typeof window !== 'undefined' ? window.location.search : '';
+        const res = await fetch(`/api/checkout${query}`, { method: 'POST' });
         const data = await res.json();
         if (data?.url) {
           window.location.assign(data.url);
@@ -27,4 +26,5 @@ export default function Checkout() {
     </main>
   );
 }
+
 
