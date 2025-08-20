@@ -5,11 +5,16 @@ export default function Checkout() {
   useEffect(() => {
     (async () => {
       try {
-        // Works with the API above; returns { url }
-        const r = await fetch('/api/checkout', { method: 'POST' });
-        const data = await r.json();
-        if (data?.url) window.location.assign(data.url);
-        else alert('Could not start checkout.');
+        const res = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json();
+        if (data?.url) {
+          window.location.assign(data.url);
+        } else {
+          alert('Could not start checkout.');
+        }
       } catch {
         alert('Could not start checkout.');
       }
@@ -22,3 +27,4 @@ export default function Checkout() {
     </main>
   );
 }
+
