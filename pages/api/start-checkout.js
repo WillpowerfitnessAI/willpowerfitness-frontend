@@ -1,137 +1,74 @@
 // pages/api/start-checkout.js
 export const config = { runtime: 'nodejs' };
 
-function missingEnv(...keys) {
-  return keys.filter((k) => !process.env[k]);
-}
-
 export default async function handler(req, res) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'method_not_allowed' });
-  }
-
-  const origin = req.headers.origin || 'https://app.willpowerfitnessai.com';
-  const trialDays = Number(req.query.trial) || 0;
-
-  const need = missingEnv(
-    'STRIPE_SECRET_KEY',
-    'STRIPE_PRICE_ID',
-    'SUPABASE_URL',
-    'SUPABASE_SERVICE_ROLE_KEY'
-  );
-  if (need.length) {
-    return res.status(500).json({ error: 'missing_env', missing: need });
-  }
+  const {
+    name = '',
+    email = '',
+    phone = '',
+    address_line1 = '',
+    address_line2 = '',
+    city = '',
+    state = '',
+    postal_code = '',
+    trial = false, // boolean — send true for trial flow
+    source = 'join',
+  } = req.body || {};
 
   try {
-    // ✅ dynamic imports so the file can load on Vercel even if packages are quirky
-    const { default: Stripe } = await import('stripe');
-    const { createClient } = await import('@supabase/supabase-js');
+    // --- sanity
+    if (!process.env.STRIPE_SECRET_KEY) throw new Error('Missing STRIPE_SECRET_KEY');
+    if (!process.env.STRIPE_PRICE_ID) throw new Error('Missing STRIPE_PRICE_ID');
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Missing Supabase env (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)');
+    }
+    if (!email) throw new Error('Email is required');
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      // pin an API version to avoid surprises
-      apiVersion: '2024-06-20',
-    });
+    // --- record lead (server-side) ---
+    const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { name, email, phone, address } = req.body || {};
-    if (
-      !email ||
-      !name ||
-      !address?.line1 ||
-      !address?.city ||
-      !address?.state ||
-      !address?.postal_code
-    ) {
-      return res.status(400).json({ error: 'missing_required_fields' });
-    }
-
-    // 1) Lead capture (non-blocking)
-    try {
-      await supabase.from('leads').upsert(
-        {
-          email,
-          name,
-          phone: phone || null,
-          address_line1: address.line1,
-          address_line2: address.line2 || null,
-          city: address.city,
-          state: address.state,
-          postal_code: address.postal_code,
-          country: address.country || 'US',
-          source: trialDays > 0 ? 'trial' : 'subscribe',
-        },
-        { onConflict: 'email' }
-      );
-    } catch (e) {
-      console.warn('leads upsert warning:', e?.message || e);
-    }
-
-    // 2) Find or create Stripe customer
-    let customerId;
-    try {
-      const existing = await stripe.customers.list({ email, limit: 1 });
-      customerId = existing.data[0]?.id;
-    } catch (e) {
-      console.error('stripe.customers.list error:', e);
-    }
-    if (!customerId) {
-      const c = await stripe.customers.create({
+    await supabase
+      .from('leads')
+      .upsert([{
         email,
         name,
-        phone: phone || undefined,
-        address: {
-          line1: address.line1,
-          line2: address.line2 || undefined,
-          city: address.city,
-          state: address.state,
-          postal_code: address.postal_code,
-          country: address.country || 'US',
-        },
-      });
-      customerId = c.id;
-    } else {
-      await stripe.customers.update(customerId, {
-        name,
-        phone: phone || undefined,
-        address: {
-          line1: address.line1,
-          line2: address.line2 || undefined,
-          city: address.city,
-          state: address.state,
-          postal_code: address.postal_code,
-          country: address.country || 'US',
-        },
-      });
-    }
+        phone,
+        address_line1,
+        address_line2,
+        city,
+        state,
+        postal_code,
+        source,
+      }], { onConflict: 'email' }); // email PK per our earlier table
 
-    // 3) Create Checkout Session
-    const subscription_data =
-      trialDays > 0 ? { trial_period_days: trialDays } : undefined;
+    // --- Stripe Checkout session ---
+    const { default: Stripe } = await import('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
 
+    const origin = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      customer: customerId,
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-      allow_promotion_codes: true,
+      // add 2-day free trial only when `trial` is true
+      subscription_data: trial ? { trial_period_days: 2 } : undefined,
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/subscribe`,
-      ...(subscription_data ? { subscription_data } : {}),
+      cancel_url: `${origin}/join${trial ? '?trial=1' : ''}`,
+      customer_email: email,
+      allow_promotion_codes: false,
+      metadata: { brand: 'WillpowerFitnessAI', trial: String(trial) },
+      automatic_tax: { enabled: false },
     });
 
     return res.status(200).json({ url: session.url });
-  } catch (e) {
-    console.error('start-checkout fatal:', e?.message || e);
-    // Always respond JSON so the client can show a friendly message
-    return res.status(500).json({
-      error: 'server_error',
-      message: e?.message || 'unknown_error',
-    });
+  } catch (err) {
+    console.error('start-checkout error', err);
+    return res.status(500).json({ error: String(err.message || err) });
   }
 }
