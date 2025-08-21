@@ -1,114 +1,152 @@
-// pages/consultation.js
-import Layout from '../components/Layout';
+// /pages/consultation.js
 import { useState } from 'react';
-const API = process.env.NEXT_PUBLIC_API_BASE_URL;
+import Head from 'next/head';
 
-export default function Consultation(){
-  const [form, setForm] = useState({
-    name:'', email:'', goals:'', experience:'', injuries:'', equipment:'', schedule:''
-  });
-  const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState('');   // renamed
-  const [fullText, setFullText] = useState('');         // keep complete server text for PDF
+export default function Consultation() {
+  const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState(null);
 
-  const onChange = e => setForm({...form, [e.target.name]: e.target.value});
+  // Form state
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address_line1, setAddress1] = useState('');
+  const [address_line2, setAddress2] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [postal_code, setPostal] = useState('');
 
-  function summarize(text, max=750){
-    if (!text) return '';
-    const clean = text.trim();
-    return clean.length > max ? clean.slice(0, max) + '…' : clean;
+  // If you pass ?trial=2 on the URL, we’ll treat it as trial checkout.
+  const trial = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search)).get('trial')
+    : null;
+
+  function next() {
+    setStep((s) => Math.min(3, s + 1));
+    setErr(null);
+  }
+  function back() {
+    setStep((s) => Math.max(1, s - 1));
+    setErr(null);
   }
 
-  async function submit(e){
+  async function onSubmit(e) {
     e.preventDefault();
-    setLoading(true); setSuggestions(''); setFullText('');
-    try{
-      const r = await fetch(`${API}/api/consult`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(form)
+    setSubmitting(true);
+    setErr(null);
+    try {
+      const r = await fetch('/api/consult', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name, email, phone, address_line1, address_line2, city, state, postal_code,
+          trial
+        })
       });
-      const j = await r.json();
-      if(!r.ok) throw new Error(j?.error || `API ${r.status}`);
-
-      // j.plan existed before — we now treat it as "fullText" and show a short suggestions preview
-      const full = j.plan || 'We will tailor your starting approach around your goals and constraints.';
-      setFullText(full);
-      setSuggestions(summarize(full));
-    }catch(err){
-      console.error(err);
-      alert('Could not generate suggestions. Try again.');
-    }finally{ setLoading(false); }
-  }
-
-  async function downloadPdf(){
-    const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF({unit:'pt', format:'letter'});
-    const margin = 48; let y = margin;
-
-    // built-in font names are lowercase; or just omit setFont and use defaults
-    doc.setFont('times','normal');
-    doc.setFontSize(18);
-    doc.text('WillpowerFitness AI — Consultation', margin, y); y+=24;
-    doc.setFontSize(12);
-
-    const text = fullText || 'No content.';
-    const lines = doc.splitTextToSize(text, 515);
-    for (const line of lines) {
-      if (y > 740) { doc.addPage(); y = margin; }
-      doc.text(line, margin, y); y += 16;
+      const data = await r.json();
+      if (!r.ok || !data?.ok) throw new Error(data?.error || 'Failed to save consult');
+      // Send them to Stripe path returned from API
+      if (data.next) window.location.href = data.next;
+    } catch (e) {
+      setErr(e.message || String(e));
+      setSubmitting(false);
     }
-    const filename = `WillpowerFitness_Consultation_${(form.name||'client').replace(/\s+/g,'_')}.pdf`;
-    doc.save(filename);
   }
 
   return (
-    <Layout title="Free Consultation">
-      <h1>Free Consultation</h1>
-      <p className="muted">Answer a few questions. We’ll suggest your best starting approach—
-        then you can join as a client for full coaching.</p>
+    <>
+      <Head><title>Free Consultation • WillpowerFitness AI</title></Head>
+      <main style={{ padding: 24, maxWidth: 840, margin: '0 auto' }}>
+        <h1 style={{ marginBottom: 24 }}>Start your {trial ? 'free trial' : 'membership'}</h1>
+        <p style={{ opacity: 0.8, marginBottom: 24 }}>
+          3 quick steps. We’ll personalize your coaching, then send you to checkout to confirm.
+        </p>
 
-      <form onSubmit={submit} className="grid grid-2" style={{marginTop:16}}>
-        <div>
-          <label className="label">Name</label>
-          <input className="input" name="name" value={form.name} onChange={onChange} required/>
-          <label className="label">Email</label>
-          <input className="input" type="email" name="email" value={form.email} onChange={onChange}/>
-          <label className="label">Goals</label>
-          <textarea className="input" rows={4} name="goals" value={form.goals} onChange={onChange} required/>
-          <label className="label">Experience</label>
-          <select className="input" name="experience" value={form.experience} onChange={onChange}>
-            <option value="">Select</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option>
-          </select>
-        </div>
-        <div>
-          <label className="label">Injuries / Limitations</label>
-          <textarea className="input" rows={3} name="injuries" value={form.injuries} onChange={onChange}/>
-          <label className="label">Equipment available</label>
-          <textarea className="input" rows={3} name="equipment" value={form.equipment} onChange={onChange}/>
-          <label className="label">Schedule (preferred days/times)</label>
-          <textarea className="input" rows={3} name="schedule" value={form.schedule} onChange={onChange}/>
-          <button className="btn btn--primary" type="submit" disabled={loading} style={{marginTop:12}}>
-            {loading ? 'Working…' : 'Get my suggestions'}
-          </button>
-        </div>
-      </form>
+        <form onSubmit={onSubmit}>
+          {/* Step indicator */}
+          <div style={{ marginBottom: 16, opacity: 0.7 }}>Step {step} of 3</div>
 
-      {suggestions && (
-        <section style={{marginTop:24}}>
-          <h2>Your Suggested Starting Point</h2>
-          <pre className="card" style={{whiteSpace:'pre-wrap'}}>{suggestions}</pre>
+          {step === 1 && (
+            <section style={{ marginBottom: 24 }}>
+              <label>Name*</label>
+              <input className="inp" value={name} onChange={e=>setName(e.target.value)} required />
+              <label style={{ marginTop: 12 }}>Email*</label>
+              <input className="inp" type="email" value={email} onChange={e=>setEmail(e.target.value)} required />
+              <label style={{ marginTop: 12 }}>Phone</label>
+              <input className="inp" value={phone} onChange={e=>setPhone(e.target.value)} />
+            </section>
+          )}
 
-          <div style={{display:'flex',gap:12, marginTop:12, flexWrap:'wrap'}}>
-            <a className="btn btn--primary" href="/subscribe">Become a client</a>
-            <button className="btn btn--outline" onClick={downloadPdf}>Download full consultation</button>
+          {step === 2 && (
+            <section style={{ marginBottom: 24 }}>
+              <label>Address line 1*</label>
+              <input className="inp" value={address_line1} onChange={e=>setAddress1(e.target.value)} required />
+              <label style={{ marginTop: 12 }}>Address line 2</label>
+              <input className="inp" value={address_line2} onChange={e=>setAddress2(e.target.value)} />
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginTop: 12 }}>
+                <div>
+                  <label>City*</label>
+                  <input className="inp" value={city} onChange={e=>setCity(e.target.value)} required />
+                </div>
+                <div>
+                  <label>State*</label>
+                  <input className="inp" value={state} onChange={e=>setState(e.target.value)} required />
+                </div>
+                <div>
+                  <label>ZIP*</label>
+                  <input className="inp" value={postal_code} onChange={e=>setPostal(e.target.value)} required />
+                </div>
+              </div>
+            </section>
+          )}
+
+          {step === 3 && (
+            <section style={{ marginBottom: 24 }}>
+              <p style={{ opacity: 0.85, marginBottom: 12 }}>
+                Done. When you continue, we’ll save your consult and send you to Stripe to {trial ? 'start your free trial' : 'activate your membership'}.
+              </p>
+            </section>
+          )}
+
+          {err && <div style={{ color: '#f66', marginBottom: 12 }}>Error: {err}</div>}
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            {step > 1 && <button type="button" className="btn" onClick={back}>Back</button>}
+            {step < 3 && <button type="button" className="btn btn-primary" onClick={next}>Next</button>}
+            {step === 3 && (
+              <button disabled={submitting} className="btn btn-primary" type="submit">
+                {submitting ? 'Saving…' : 'Continue to Stripe'}
+              </button>
+            )}
           </div>
+        </form>
 
-          <small className="muted" style={{display:'block', marginTop:8}}>
-            Not medical advice. Consult a physician before starting any program.
-          </small>
-        </section>
-      )}
-    </Layout>
+        <style jsx>{`
+          .inp {
+            width: 100%;
+            background: #0e0e0e;
+            border: 1px solid #2a2a2a;
+            color: #fff;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-top: 6px;
+          }
+          .btn {
+            border-radius: 999px;
+            padding: 10px 16px;
+            border: 1px solid #444;
+            background: transparent;
+            color: #fff;
+          }
+          .btn-primary {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+          }
+          label { display:block; font-size: 14px; opacity: .9; }
+        `}</style>
+      </main>
+    </>
   );
 }
