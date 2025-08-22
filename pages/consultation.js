@@ -1,5 +1,5 @@
 // /pages/consultation.js
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
 export default function Consultation() {
@@ -7,7 +7,6 @@ export default function Consultation() {
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState(null);
 
-  // Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -17,19 +16,16 @@ export default function Consultation() {
   const [state, setState] = useState('');
   const [postal_code, setPostal] = useState('');
 
-  // If you pass ?trial=2 on the URL, we’ll treat it as trial checkout.
-  const trial = typeof window !== 'undefined'
-    ? (new URLSearchParams(window.location.search)).get('trial')
-    : null;
+  const [trial, setTrial] = useState(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const t = new URLSearchParams(window.location.search).get('trial');
+      setTrial(t);
+    }
+  }, []);
 
-  function next() {
-    setStep((s) => Math.min(3, s + 1));
-    setErr(null);
-  }
-  function back() {
-    setStep((s) => Math.max(1, s - 1));
-    setErr(null);
-  }
+  function next() { setStep(s => Math.min(3, s + 1)); setErr(null); }
+  function back() { setStep(s => Math.max(1, s - 1)); setErr(null); }
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -46,7 +42,6 @@ export default function Consultation() {
       });
       const data = await r.json();
       if (!r.ok || !data?.ok) throw new Error(data?.error || 'Failed to save consult');
-      // Send them to Stripe path returned from API
       if (data.next) window.location.href = data.next;
     } catch (e) {
       setErr(e.message || String(e));
@@ -64,7 +59,6 @@ export default function Consultation() {
         </p>
 
         <form onSubmit={onSubmit}>
-          {/* Step indicator */}
           <div style={{ marginBottom: 16, opacity: 0.7 }}>Step {step} of 3</div>
 
           {step === 1 && (
@@ -150,3 +144,5 @@ export default function Consultation() {
     </>
   );
 }
+
+  
