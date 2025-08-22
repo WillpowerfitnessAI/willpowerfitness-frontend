@@ -14,13 +14,12 @@ export default async function handler(req, res) {
     trial // boolean or "2" if you’re passing ?trial=2
   } = req.body || {};
 
-  // Basic validation
   if (!email) return res.status(400).json({ ok: false, error: 'email required' });
 
   try {
     const supabase = getAdminClient();
 
-    // 1) Upsert into leads (pre-signup)
+    // 1) Upsert the lead
     const lead = {
       email: (email || '').trim().toLowerCase(),
       name: name || null,
@@ -38,31 +37,28 @@ export default async function handler(req, res) {
       .upsert(lead, { onConflict: 'email' });
     if (upsertErr) throw upsertErr;
 
-    // 2) Fire-and-forget welcome email / SMS (if keys exist)
+    // 2) Fire-and-forget notifications (optional)
     await Promise.allSettled([
       maybeSendWelcomeEmail(lead),
       maybeSendWelcomeSMS(lead)
     ]);
 
-    // 3) Tell frontend where to go next (your Stripe flow)
-    // If you already use /api/start-checkout, keep using it.
-    // Here we return the path so the client can redirect.
+    // 3) Tell the client where to go next (your existing Stripe route)
     const next = trial ? '/api/start-checkout?trial=2' : '/api/start-checkout';
     return res.status(200).json({ ok: true, next });
   } catch (e) {
     console.error('consult error:', e);
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 }
 
 async function maybeSendWelcomeEmail(lead) {
-  // RESEND option (no dependency unless key is present)
   if (process.env.RESEND_API_KEY && lead?.email) {
     try {
       const { Resend } = await import('resend');
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
-        from: process.env.RESEND_FROM || 'WillpowerFitness AI <no-reply@yourdomain>',
+        from: process.env.RESEND_FROM || 'WillpowerFitness AI <noreply@send.willpowerfitnessai.com>',
         to: lead.email,
         subject: 'Welcome to WillpowerFitness AI',
         html: `
@@ -79,7 +75,7 @@ async function maybeSendWelcomeEmail(lead) {
 }
 
 async function maybeSendWelcomeSMS(lead) {
-  // Twilio option (no dependency unless keys are present)
+  // Twilio is optional; will be skipped if env vars are not set
   if (
     process.env.TWILIO_ACCOUNT_SID &&
     process.env.TWILIO_AUTH_TOKEN &&
