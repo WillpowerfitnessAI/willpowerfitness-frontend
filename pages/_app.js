@@ -25,7 +25,8 @@ export default function App({ Component, pageProps }) {
           rel="stylesheet"
         />
         {/* favicon (cache-busted with ?v=2) */}
-        <link rel="icon" href="/favicon.ico?v=2" />
+        <link rel="icon" type="image/png" href="/favicon-32.png?v=1" />
+
         <title>WillpowerFitness AI</title>
       </Head>
       <Component {...pageProps} />
