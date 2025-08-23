@@ -1,43 +1,23 @@
-// pages/index.js
-import Layout from '../components/Layout';
-// deploy bump
+// pages/index.js (or wherever those buttons live)
+const trialUrl = process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK;
+
+function goToTrial() {
+  if (typeof window !== 'undefined' && trialUrl) {
+    window.location.href = trialUrl;
+  }
+}
+
 export default function Home() {
   return (
-    <Layout>
-      <section className="hero">
-        <h1 style={{ fontSize: 44, marginBottom: 8 }}>
-          Your 24/7 no-nonsense AI Trainer.
-        </h1>
+    <>
+      {/* Keep this pointing to your consultation page */}
+      <a href="/consultation" className="btn">Start free consultation</a>
 
-        <p style={{ maxWidth: 680, opacity: 0.85 }}>
-          WillpowerFitness AI is your always-on coach—firm, pragmatic, with a hint of jocularity.
-          Training, nutrition, recovery, and accountability—integrated and adaptive.
-        </p>
+      {/* Trial / membership go to Stripe Payment Link */}
+      <button onClick={goToTrial} className="btn">Start Trial</button>
 
-        <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
-          <a className="btn btn--primary" href="/consultation">Start free consultation</a>
-          <a className="btn btn--outline" href="/subscribe">See membership</a>
-        </div>
-
-        <div style={{ marginTop: 28 }} className="grid grid-2">
-          <div className="card">
-            <strong>Elite AI Coaching</strong><br />
-            <small className="muted">Dynamic adjustments, biomechanics, RPE-aware.</small>
-          </div>
-          <div className="card">
-            <strong>Relationship Builder</strong><br />
-            <small className="muted">Learns preferences & motivation style over time.</small>
-          </div>
-          <div className="card">
-            <strong>Lifestyle Integration</strong><br />
-            <small className="muted">Nutrition, sleep, stress, recovery—end-to-end.</small>
-          </div>
-          <div className="card">
-            <strong>White-label Pro</strong><br />
-            <small className="muted">Your brand, your domain, premium UX.</small>
-          </div>
-        </div>
-      </section>
-    </Layout>
+      {/* If you want “See membership” to also go to the same link: */}
+      {/* <button onClick={goToTrial} className="btn">See membership</button> */}
+    </>
   );
 }
