@@ -1,5 +1,5 @@
 // pages/index.js
-import Footer from '../Footer'; // <-- if you moved Footer to /components/Footer.js, change to '../components/Footer'
+import Footer from '../components/Footer';
 
 export default function Home() {
   const buyUrl   = process.env.NEXT_PUBLIC_STRIPE_BUY_URL;
