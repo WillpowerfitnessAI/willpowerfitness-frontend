@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /api/
+Disallow: /app/
+Disallow: /dashboard/
+Sitemap: https://app.willpowerfitnessai.com/sitemap.xml
