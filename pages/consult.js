@@ -1,5 +1,5 @@
 // pages/consult.js
-import Footer from '../Footer'; // or '../components/Footer' if that's where you put it
+import Footer from '../components/Footer';
 import { useEffect, useRef, useState } from "react";
 
 // --- simple rules -> personalized plan text (no keys needed) ---
