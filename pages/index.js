@@ -1,4 +1,5 @@
 // pages/index.js
+import Head from 'next/head';
 import Footer from '../components/Footer';
 
 export default function Home() {
@@ -6,45 +7,115 @@ export default function Home() {
   const trialUrl = process.env.NEXT_PUBLIC_STRIPE_TRIAL_URL;
 
   return (
-    <main style={{minHeight:'100vh',background:'#0a0a0a',color:'#fff',
-                  display:'grid',placeItems:'center',padding:'2rem'}}>
-      <section style={{maxWidth:720,textAlign:'center'}}>
-        <img src="/logo.png" alt="WillpowerFitnessAI" style={{height:56,opacity:.9}} />
-        <h1 style={{fontSize:'2.2rem',margin:'1rem 0 0.5rem'}}>High-performance coaching, white-glove.</h1>
-        <p style={{opacity:.8,margin:'0 0 1.5rem'}}>Elite results. $225/month. Cancel anytime.</p>
+    <main className="page">
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>WillpowerFitnessAI</title>
+      </Head>
 
-        <div style={{display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap'}}>
+      <section className="hero">
+        <img className="logo" src="/logo.png" alt="WillpowerFitnessAI" />
+        <h1>High-performance coaching, white-glove.</h1>
+        <p className="sub">Elite results. Cancel anytime.</p>
+
+        <div className="btnRow">
           <a href="/consult">
-            <button style={{padding:'0.9rem 1.1rem',borderRadius:12,border:'1px solid #444',background:'#111',color:'#fff',cursor:'pointer'}}>
-              Start Free Consultation
-            </button>
+            <button className="btn btn--ghost">Start Free Consultation</button>
           </a>
 
-          <a href={trialUrl || '#'}>
-            <button style={{padding:'0.9rem 1.1rem',borderRadius:12,border:'1px solid #1f1f1f',background:'#1a1a1a',color:'#fff',cursor:'pointer',opacity:trialUrl?1:.8}}>
+          <a href={trialUrl || "#"}>
+            <button className="btn btn--dark" disabled={!trialUrl}>
               Start Trial
             </button>
           </a>
 
-          <a href={buyUrl || '#'}>
-            <button style={{padding:'0.9rem 1.1rem',borderRadius:12,border:'1px solid #fff',background:'#fff',color:'#000',cursor:'pointer',opacity:buyUrl?1:.8}}>
+          <a href={buyUrl || "#"}>
+            <button className="btn btn--light" disabled={!buyUrl}>
               Join Now — $225/mo
             </button>
           </a>
 
-          {/* New: brochure download */}
           <a href="/brochure.pdf" download>
-            <button style={{padding:'0.9rem 1.1rem',borderRadius:12,border:'1px solid #444',background:'#111',color:'#fff',cursor:'pointer'}}>
-              Download Brochure (PDF)
-            </button>
+            <button className="btn btn--ghost">Download Brochure (PDF)</button>
           </a>
         </div>
 
-        <p style={{fontSize:12,opacity:.6,marginTop:'1rem'}}>Secure checkout via Stripe.</p>
+        <p className="secure">Secure checkout via Stripe.</p>
       </section>
 
       <Footer />
+
+      <style jsx>{`
+        .page {
+          min-height: 100vh;
+          background: #0a0a0a;
+          color: #fff;
+          display: grid;
+          grid-template-rows: 1fr auto;
+        }
+        .hero {
+          max-width: 780px;
+          margin: 0 auto;
+          text-align: center;
+          padding: 2.25rem 1rem 3rem;
+        }
+        .logo {
+          height: 56px;
+          opacity: 0.9;
+          margin: .25rem auto 1rem;
+          display: block;
+        }
+        h1 {
+          font-size: clamp(2rem, 6vw, 3.1rem);
+          line-height: 1.12;
+          margin: 0.75rem 0 .5rem;
+        }
+        .sub {
+          opacity: .8;
+          margin: 0 0 1.25rem;
+          font-size: clamp(.95rem, 1.9vw, 1.05rem);
+        }
+
+        /* Buttons: mobile first */
+        .btnRow {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
+          justify-content: center;
+          align-items: center;
+          margin-top: .5rem;
+        }
+        .btn {
+          width: 100%;
+          padding: .9rem 1rem;
+          border-radius: 12px;
+          cursor: pointer;
+          border: 1px solid #444;
+        }
+        .btn[disabled] { opacity: .5; cursor: not-allowed; }
+        .btn--ghost { background: #111; color: #fff; }
+        .btn--dark  { background: #1a1a1a; color: #fff; border-color: #1f1f1f; }
+        .btn--light { background: #fff; color: #000; border-color: #fff; }
+
+        .secure { font-size: 12px; opacity: .6; margin-top: 1rem; }
+
+        /* Small tablets: 2 columns */
+        @media (min-width: 520px) {
+          .btnRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        /* Desktop/tablet wide: inline buttons */
+        @media (min-width: 768px) {
+          .btnRow { grid-template-columns: repeat(4, max-content); justify-content: center; }
+          .btn { width: auto; }
+        }
+
+        /* Very small phones */
+        @media (max-width: 360px) {
+          .logo { height: 44px; }
+          .btn { padding: .8rem .9rem; }
+        }
+      `}</style>
     </main>
   );
 }
-
