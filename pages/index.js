@@ -3,9 +3,6 @@ import Head from 'next/head';
 import Footer from '../components/Footer';
 
 export default function Home() {
-  const buyUrl   = process.env.NEXT_PUBLIC_STRIPE_BUY_URL;
-  const trialUrl = process.env.NEXT_PUBLIC_STRIPE_TRIAL_URL;
-
   return (
     <main className="page">
       <Head>
@@ -18,24 +15,21 @@ export default function Home() {
         <h1>High-performance coaching, white-glove.</h1>
         <p className="sub">Elite results. Cancel anytime.</p>
 
+        {/* CTAs — go straight to checkout; no price on Join */}
         <div className="btnRow">
           <a href="/consult">
             <button className="btn btn--ghost">Start Free Consultation</button>
           </a>
 
-          <a href={trialUrl || "#"}>
-            <button className="btn btn--dark" disabled={!trialUrl}>
-              Start Trial
-            </button>
+          <a href="/checkout?intent=trial">
+            <button className="btn btn--dark">Start Trial</button>
           </a>
 
-          <a href={buyUrl || "#"}>
-            <button className="btn btn--light" disabled={!buyUrl}>
-              Join Now — $225/mo
-            </button>
+          <a href="/checkout?intent=join">
+            <button className="btn btn--light">Join Now</button>
           </a>
 
-          {/* New: brochure as a page, not a download */}
+          {/* Brochure is a page */}
           <a href="/brochure">
             <button className="btn btn--ghost">View Brochure</button>
           </a>
@@ -92,7 +86,6 @@ export default function Home() {
           cursor: pointer;
           border: 1px solid #444;
         }
-        .btn[disabled] { opacity: .5; cursor: not-allowed; }
         .btn--ghost { background: #111; color: #fff; }
         .btn--dark  { background: #1a1a1a; color: #fff; border-color: #1f1f1f; }
         .btn--light { background: #fff; color: #000; border-color: #fff; }
@@ -111,4 +104,3 @@ export default function Home() {
     </main>
   );
 }
-
