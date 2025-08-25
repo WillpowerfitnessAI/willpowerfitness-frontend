@@ -1,5 +1,5 @@
-
 // pages/consult.js
+import { jsPDF } from 'jspdf';
 import Footer from '../components/Footer';
 import { useEffect, useRef, useState } from "react";
 
@@ -110,4 +110,199 @@ export default function Consult() {
   }
 
   // ---------- NEW: generate personalized PDF ----------
-  async function do
+  function downloadSummaryPDF() {
+    if (!answers?.name || !answers?.email) {
+      alert('Finish the questions first so I can generate your plan PDF.');
+      return;
+    }
+
+    const p = plan || buildPlan(answers);
+
+    const doc = new jsPDF();
+    const marginL = 14;
+    let y = 18;
+
+    // Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('WillpowerFitnessAI — Consultation Summary', marginL, y);
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    const meta = [
+      `Name: ${answers.name || '-'}`,
+      `Email: ${answers.email || '-'}`,
+      `Goal: ${answers.goal || '-'}`,
+      `Schedule: ${answers.schedule || '-'}`,
+      `Experience: ${answers.experience || '-'}`,
+      `Constraints: ${answers.constraints || '-'}`,
+      `Preferences: ${answers.prefs || '-'}`,
+    ];
+    meta.forEach(line => { doc.text(line, marginL, y); y += 6; });
+
+    y += 4;
+    doc.setDrawColor(200);
+    doc.line(marginL, y, 200 - marginL, y);
+    y += 8;
+
+    // helper to wrap & page-break
+    const addWrapped = (t) => {
+      const wrapped = doc.splitTextToSize(t, 180);
+      wrapped.forEach(w => {
+        if (y > 280) { doc.addPage(); y = 18; }
+        doc.text(w, marginL, y);
+        y += 6;
+      });
+    };
+
+    const addSection = (title, textArr) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+      doc.text(title, marginL, y); y += 6;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+      (Array.isArray(textArr) ? textArr : [textArr]).forEach(addWrapped);
+      y += 4;
+    };
+
+    addSection('Plan Rationale', p.headline || 'Personalized starter plan.');
+    addSection('Training Focus', (p.style && p.style.length ? p.style : ['Balanced full-body with smart progression.']).map(s => `• ${s}`));
+    addSection('Split', p.split || 'Full-body 3x/week');
+    if (p.sample && p.sample.length) addSection('Sample Week', p.sample.map(s => `• ${s}`));
+    addSection('Nutrition', p.nutrition || 'High-protein, whole foods, adequate hydration.');
+    addSection('Coach’s Note', p.tone || 'Direct, disciplined, and on your side. Consistency wins.');
+    addSection('Next Step', p.nudge || 'Start the trial or join now—your plan will auto-adapt as you check in.');
+    addSection('Disclaimer', 'For informational purposes only. Fitness guidance is not medical advice. Consult a physician before starting any exercise or nutrition program.');
+
+    const filename = `${(answers.name || 'client').split(' ')[0]}_summary.pdf`;
+    doc.save(filename);
+  }
+
+  const send = () => {
+    if (!currentQ) return;
+    const valid = currentQ.validate(input);
+    if (valid !== true) { setMessages(m=>[...m,{role:"assistant",text:valid}]); return; }
+
+    const nextAnswers = { ...answers, [currentQ.key]: input };
+    setMessages(m=>[...m,{role:"user",text:input}]);
+    setAnswers(nextAnswers);
+    setInput("");
+
+    const nextStep = step + 1;
+    setStep(nextStep);
+
+    if (nextStep < questions.length) {
+      setMessages(m=>[...m,{role:"assistant",text:questions[nextStep].label}]);
+    } else {
+      const p = buildPlan(nextAnswers);
+      setPlan(p);
+      const summary =
+        `Great. Summary:\n• Name: ${nextAnswers.name}\n• Email: ${nextAnswers.email}\n• Goal: ${nextAnswers.goal}\n` +
+        `• Schedule: ${nextAnswers.schedule}\n• Experience: ${nextAnswers.experience}\n` +
+        `• Constraints: ${nextAnswers.constraints}\n• Preferences: ${nextAnswers.prefs}`;
+      setMessages(m=>[
+        ...m,
+        { role:"assistant", text: summary },
+        { role:"assistant", text: p.headline },
+        { role:"assistant", text: `Training focus: ${p.style.join("; ")}` },
+        { role:"assistant", text: `Split: ${p.split}` },
+        { role:"assistant", text: `Sample week:\n- ${p.sample.join("\n- ")}` },
+        { role:"assistant", text: `Nutrition: ${p.nutrition}` },
+        { role:"assistant", text: p.nudge }
+      ]);
+      persistLeadMinimal(nextAnswers); // keep only name/email if they bounce
+    }
+  };
+
+  const disabledTrial = !trialUrl;
+  const disabledBuy   = !buyUrl;
+
+  return (
+    <main style={{minHeight:"100vh",background:"#0a0a0a",color:"#fff",
+                  display:"grid",placeItems:"center",padding:"2rem"}}>
+      <section style={{width:"min(980px, 92vw)"}}>
+        <h1 style={{fontSize:"2rem",marginBottom:"0.75rem"}}>Free Consultation</h1>
+        <p style={{opacity:.8,margin:"0 0 1rem"}}>
+          15–20 minutes of smart Q&A to align goals, schedule, and constraints. 100% autonomous coach.
+        </p>
+
+        {/* Chat window */}
+        <div ref={listRef}
+             style={{height:"50vh",minHeight:360,overflowY:"auto",background:"#0f0f0f",
+                     border:"1px solid #222",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+          {messages.map((m,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",margin:"6px 0"}}>
+              <div style={{
+                maxWidth:"78%", padding:"10px 12px", borderRadius:12, lineHeight:1.35,
+                background: m.role==="user" ? "#fff" : "#151515",
+                color: m.role==="user" ? "#000" : "#fff",
+                border: m.role==="user" ? "1px solid #eaeaea" : "1px solid #222"
+              }}>
+                {m.text}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Input */}
+        {step < questions.length && (
+          <form onSubmit={(e)=>{e.preventDefault(); send();}}
+                style={{display:"flex",gap:10,alignItems:"center",marginBottom:18}}>
+            <input
+              value={input}
+              onChange={e=>setInput(e.target.value)}
+              placeholder={currentQ?.placeholder || "Type here"}
+              style={{flex:1,padding:"0.9rem 1rem",borderRadius:12,border:"1px solid #333",background:"#111",color:"#fff"}}
+            />
+            <button type="submit"
+              style={{padding:"0.9rem 1.1rem",borderRadius:12,border:"1px solid #fff",background:"#fff",color:"#000",cursor:"pointer"}}>
+              Send
+            </button>
+          </form>
+        )}
+
+        {/* CTAs */}
+        {step >= questions.length && (
+          <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
+            {/* Static brochure */}
+            <a href="/brochure.pdf" download>
+              <button style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #444",background:"#111",color:"#fff",cursor:"pointer"}}>
+                Download Brochure (PDF)
+              </button>
+            </a>
+
+            {/* Personalized summary */}
+            <button onClick={downloadSummaryPDF}
+              style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #444",background:"#111",color:"#fff",cursor:"pointer"}}>
+              Download My Summary (PDF)
+            </button>
+
+            {/* Trial */}
+            <a href={trialUrl || "#"}
+               onClick={(e)=>{ if(disabledTrial){ e.preventDefault(); alert("Trial link not configured."); return; }
+                               sendFullIntake("trial"); }}>
+              <button style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #1f1f1f",
+                              background:"#1a1a1a",color:"#fff",cursor:"pointer",
+                              opacity: disabledTrial ? .8 : 1}}>
+                Start Trial
+              </button>
+            </a>
+
+            {/* Join */}
+            <a href={buyUrl || "#"}
+               onClick={(e)=>{ if(disabledBuy){ e.preventDefault(); alert("Join link not configured."); return; }
+                               sendFullIntake("join"); }}>
+              <button style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #fff",
+                              background:"#fff",color:"#000",cursor:"pointer",
+                              opacity: disabledBuy ? .8 : 1}}>
+                Join Now
+              </button>
+            </a>
+          </div>
+        )}
+      </section>
+
+      <Footer />
+    </main>
+  );
+}
+
