@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf';
 import Footer from '../components/Footer';
 import { useEffect, useRef, useState } from "react";
 
-// --- simple rules -> personalized plan text (no keys needed) ---
+// --- rules-based fallback plan (no keys needed) ---
 function buildPlan(a) {
   const days = String(a.schedule || "").match(/\d+/)?.[0]
     ? parseInt(String(a.schedule).match(/\d+/)[0], 10) : 3;
@@ -26,7 +26,7 @@ function buildPlan(a) {
   if (/shoulder/.test(cts))  tweaks.push("shoulder-safe upper: landmine press, neutral-grip DB press/rows, cable work, avoid deep dips");
 
   let split;
-  if (days <= 2)      split = "Upper / Lower + short conditioning";
+  if (days <= 2)       split = "Upper / Lower + short conditioning";
   else if (days === 3) split = "Full-body x3 (strength focus Mon/Fri, pump/conditioning Wed)";
   else if (days === 4) split = "Upper / Lower / Upper / Lower";
   else                 split = "PPL (Push/Pull/Legs) + 1–2 conditioning days";
@@ -69,6 +69,7 @@ const questions = [
 export default function Consult() {
   const buyUrl   = process.env.NEXT_PUBLIC_STRIPE_BUY_URL;
   const trialUrl = process.env.NEXT_PUBLIC_STRIPE_TRIAL_URL;
+  const API_BASE = "https://api.willpowerfitnessai.com";
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -76,7 +77,9 @@ export default function Consult() {
   const [messages, setMessages] = useState([
     { role:"assistant", text:"Welcome—let’s build your plan. I’ll ask a few quick questions." }
   ]);
-  const [plan, setPlan] = useState(null);
+  const [plan, setPlan] = useState(null);     // rules plan (used for PDF & fallback)
+  const [llmPlan, setLlmPlan] = useState(""); // optional LLM text
+  const [loadingPlan, setLoadingPlan] = useState(false);
   const listRef = useRef(null);
 
   useEffect(()=>{ listRef.current?.scrollTo(0, listRef.current.scrollHeight); }, [messages]);
@@ -89,14 +92,14 @@ export default function Consult() {
       localStorage.setItem("lead_min", JSON.stringify({ name:a.name, email:a.email, ts:Date.now() }));
       const body = new Blob([JSON.stringify({ name:a.name, email:a.email, source:"consult-exit" })],
                             { type: 'application/json' });
-      navigator.sendBeacon?.("https://api.willpowerfitnessai.com/api/lead-min", body);
+      navigator.sendBeacon?.(`${API_BASE}/api/lead-min`, body);
     } catch {}
   }
 
   async function sendFullIntake(intent){
     const body = { intent, answers, summary: plan };
     try {
-      await fetch("https://api.willpowerfitnessai.com/api/lead", {
+      await fetch(`${API_BASE}/api/lead`, {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify(body),
@@ -105,75 +108,84 @@ export default function Consult() {
     } catch {}
   }
 
-  // ---------- NEW: generate personalized PDF ----------
+  // ---- LLM plan (backend) with timeout + graceful fallback ----
+  async function generatePlanFromAPI(a, timeoutMs = 7000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${API_BASE}/api/consult`, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        signal: ctrl.signal,
+        body: JSON.stringify({
+          name: a.name,
+          email: a.email,
+          goals: a.goal,
+          experience: a.experience,
+          injuries: a.constraints,
+          equipment: "",            // optional
+          schedule: a.schedule
+        })
+      });
+      clearTimeout(t);
+      if (!res.ok) throw new Error("bad status");
+      const data = await res.json();
+      return (data && data.plan) ? String(data.plan) : "";
+    } catch {
+      clearTimeout(t);
+      return "";
+    }
+  }
+
+  // ---------- PDF exporter (uses the rules-plan fields) ----------
   function downloadSummaryPDF() {
     if (!answers?.name || !answers?.email) {
       alert('Finish the questions first so I can generate your plan PDF.');
       return;
     }
-
     const p = plan || buildPlan(answers);
-
     const doc = new jsPDF();
     const marginL = 14;
     let y = 18;
 
-    // Header
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('WillpowerFitnessAI — Consultation Summary', marginL, y);
-    y += 8;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+    doc.text('WillpowerFitnessAI — Consultation Summary', marginL, y); y += 8;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
     const meta = [
-      `Name: ${answers.name || '-'}`,
-      `Email: ${answers.email || '-'}`,
-      `Goal: ${answers.goal || '-'}`,
-      `Schedule: ${answers.schedule || '-'}`,
-      `Experience: ${answers.experience || '-'}`,
-      `Constraints: ${answers.constraints || '-'}`,
+      `Name: ${answers.name || '-'}`, `Email: ${answers.email || '-'}`,
+      `Goal: ${answers.goal || '-'}`, `Schedule: ${answers.schedule || '-'}`,
+      `Experience: ${answers.experience || '-'}`, `Constraints: ${answers.constraints || '-'}`,
       `Preferences: ${answers.prefs || '-'}`,
     ];
     meta.forEach(line => { doc.text(line, marginL, y); y += 6; });
 
-    y += 4;
-    doc.setDrawColor(200);
-    doc.line(marginL, y, 200 - marginL, y);
-    y += 8;
+    y += 4; doc.setDrawColor(200); doc.line(marginL, y, 200 - marginL, y); y += 8;
 
-    // helper to wrap & page-break
     const addWrapped = (t) => {
       const wrapped = doc.splitTextToSize(t, 180);
-      wrapped.forEach(w => {
-        if (y > 280) { doc.addPage(); y = 18; }
-        doc.text(w, marginL, y);
-        y += 6;
-      });
+      wrapped.forEach(w => { if (y > 280) { doc.addPage(); y = 18; } doc.text(w, marginL, y); y += 6; });
     };
-
     const addSection = (title, textArr) => {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
-      doc.text(title, marginL, y); y += 6;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text(title, marginL, y); y += 6;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
       (Array.isArray(textArr) ? textArr : [textArr]).forEach(addWrapped);
       y += 4;
     };
 
     addSection('Plan Rationale', p.headline || 'Personalized starter plan.');
-    addSection('Training Focus', (p.style && p.style.length ? p.style : ['Balanced full-body with smart progression.']).map(s => `• ${s}`));
+    addSection('Training Focus', (p.style?.length ? p.style : ['Balanced full-body with smart progression.']).map(s => `• ${s}`));
     addSection('Split', p.split || 'Full-body 3x/week');
-    if (p.sample && p.sample.length) addSection('Sample Week', p.sample.map(s => `• ${s}`));
+    if (p.sample?.length) addSection('Sample Week', p.sample.map(s => `• ${s}`));
     addSection('Nutrition', p.nutrition || 'High-protein, whole foods, adequate hydration.');
     addSection('Coach’s Note', p.tone || 'Direct, disciplined, and on your side. Consistency wins.');
     addSection('Next Step', p.nudge || 'Start the trial or join now—your plan will auto-adapt as you check in.');
     addSection('Disclaimer', 'For informational purposes only. Fitness guidance is not medical advice. Consult a physician before starting any exercise or nutrition program.');
 
-    const filename = `${(answers.name || 'client').split(' ')[0]}_summary.pdf`;
-    doc.save(filename);
+    doc.save(`${(answers.name || 'client').split(' ')[0]}_summary.pdf`);
   }
 
-  const send = () => {
+  const send = async () => {
     if (!currentQ) return;
     const valid = currentQ.validate(input);
     if (valid !== true) { setMessages(m=>[...m,{role:"assistant",text:valid}]); return; }
@@ -188,24 +200,44 @@ export default function Consult() {
 
     if (nextStep < questions.length) {
       setMessages(m=>[...m,{role:"assistant",text:questions[nextStep].label}]);
+      return;
+    }
+
+    // Finished questions → summary + plan
+    const summary =
+      `Great. Summary:\n• Name: ${nextAnswers.name}\n• Email: ${nextAnswers.email}\n• Goal: ${nextAnswers.goal}\n` +
+      `• Schedule: ${nextAnswers.schedule}\n• Experience: ${nextAnswers.experience}\n` +
+      `• Constraints: ${nextAnswers.constraints}\n• Preferences: ${nextAnswers.prefs}`;
+
+    // Always compute rules-plan (used for PDF & fallback)
+    const fallbackPlan = buildPlan(nextAnswers);
+    setPlan(fallbackPlan);
+    persistLeadMinimal(nextAnswers);
+
+    setMessages(m=>[
+      ...m,
+      { role:"assistant", text: summary },
+      { role:"assistant", text: "Give me a few seconds while I craft your starter plan…" }
+    ]);
+
+    setLoadingPlan(true);
+    const llmText = await generatePlanFromAPI(nextAnswers);
+    setLoadingPlan(false);
+
+    if (llmText) {
+      setLlmPlan(llmText);
+      setMessages(m=>[...m, { role:"assistant", text: llmText }, { role:"assistant", text: fallbackPlan.nudge }]);
     } else {
-      const p = buildPlan(nextAnswers);
-      setPlan(p);
-      const summary =
-        `Great. Summary:\n• Name: ${nextAnswers.name}\n• Email: ${nextAnswers.email}\n• Goal: ${nextAnswers.goal}\n` +
-        `• Schedule: ${nextAnswers.schedule}\n• Experience: ${nextAnswers.experience}\n` +
-        `• Constraints: ${nextAnswers.constraints}\n• Preferences: ${nextAnswers.prefs}`;
+      // Fallback to structured rules messages
       setMessages(m=>[
         ...m,
-        { role:"assistant", text: summary },
-        { role:"assistant", text: p.headline },
-        { role:"assistant", text: `Training focus: ${p.style.join("; ")}` },
-        { role:"assistant", text: `Split: ${p.split}` },
-        { role:"assistant", text: `Sample week:\n- ${p.sample.join("\n- ")}` },
-        { role:"assistant", text: `Nutrition: ${p.nutrition}` },
-        { role:"assistant", text: p.nudge }
+        { role:"assistant", text: fallbackPlan.headline },
+        { role:"assistant", text: `Training focus: ${fallbackPlan.style.join("; ")}` },
+        { role:"assistant", text: `Split: ${fallbackPlan.split}` },
+        { role:"assistant", text: `Sample week:\n- ${fallbackPlan.sample.join("\n- ")}` },
+        { role:"assistant", text: `Nutrition: ${fallbackPlan.nutrition}` },
+        { role:"assistant", text: fallbackPlan.nudge }
       ]);
-      persistLeadMinimal(nextAnswers);
     }
   };
 
@@ -213,24 +245,16 @@ export default function Consult() {
   const disabledBuy   = !buyUrl;
 
   return (
-    <main
-      className="consult"
-      style={{minHeight:"100vh",background:"#0a0a0a",color:"#fff",
-              display:"grid",placeItems:"center",padding:"2rem"}}
-    >
+    <main style={{minHeight:"100vh",background:"#0a0a0a",color:"#fff",
+                  display:"grid",placeItems:"center",padding:"2rem"}}>
       <section style={{width:"min(980px, 92vw)"}}>
         <h1 style={{fontSize:"2rem",marginBottom:"0.75rem"}}>Free Consultation</h1>
-        <p style={{opacity:.8,margin:"0 0 1rem"}}>
-          15–20 minutes of smart Q&A to align goals, schedule, and constraints. 100% autonomous coach.
-        </p>
+        <p style={{opacity:.8,margin:"0 0 1rem"}}>15–20 minutes of smart Q&A to align goals, schedule, and constraints. 100% autonomous coach.</p>
 
         {/* Chat window */}
-        <div
-          ref={listRef}
-          className="chat"
-          style={{height:"50vh",minHeight:360,overflowY:"auto",background:"#0f0f0f",
-                  border:"1px solid #222",borderRadius:14,padding:"14px 16px",marginBottom:12}}
-        >
+        <div ref={listRef}
+             style={{height:"50vh",minHeight:360,overflowY:"auto",background:"#0f0f0f",
+                     border:"1px solid #222",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
           {messages.map((m,i)=>(
             <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",margin:"6px 0"}}>
               <div style={{
@@ -243,6 +267,9 @@ export default function Consult() {
               </div>
             </div>
           ))}
+          {loadingPlan && (
+            <div style={{opacity:.7,fontSize:12,marginTop:8}}>Thinking…</div>
+          )}
         </div>
 
         {/* Input */}
@@ -264,7 +291,7 @@ export default function Consult() {
 
         {/* CTAs */}
         {step >= questions.length && (
-          <div className="ctas" style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
             {/* Static brochure */}
             <a href="/brochure.pdf" download>
               <button style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #444",background:"#111",color:"#fff",cursor:"pointer"}}>
@@ -272,7 +299,7 @@ export default function Consult() {
               </button>
             </a>
 
-            {/* Personalized summary */}
+            {/* Personalized summary (PDF from fallback plan) */}
             <button onClick={downloadSummaryPDF}
               style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #444",background:"#111",color:"#fff",cursor:"pointer"}}>
               Download My Summary (PDF)
@@ -304,33 +331,6 @@ export default function Consult() {
       </section>
 
       <Footer />
-
-      {/* --- Responsive polish --- */}
-      <style jsx>{`
-        /* Mobile-first: buttons stack nicely */
-        .consult .ctas {
-          display: grid !important;
-          grid-template-columns: 1fr;
-          gap: 12px;
-        }
-        /* Small tablets: two-up */
-        @media (min-width: 520px) {
-          .consult .ctas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-        /* Wide/tablet/desktop: inline */
-        @media (min-width: 900px) {
-          .consult .ctas { grid-template-columns: repeat(4, max-content); justify-content: center; }
-          .consult .ctas :global(button) { width: auto; }
-        }
-
-        /* iOS: prevent zoom on input focus */
-        .consult :global(input) { font-size: 16px; }
-
-        /* Give phones a bit more chat height */
-        @media (max-width: 480px) {
-          .consult .chat { height: 56vh !important; }
-        }
-      `}</style>
     </main>
   );
 }
