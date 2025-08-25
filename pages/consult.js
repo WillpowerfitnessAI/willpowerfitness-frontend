@@ -123,7 +123,7 @@ export default function Consult() {
           goals: a.goal,
           experience: a.experience,
           injuries: a.constraints,
-          equipment: "",            // optional
+          equipment: "",
           schedule: a.schedule
         })
       });
@@ -292,10 +292,10 @@ export default function Consult() {
         {/* CTAs */}
         {step >= questions.length && (
           <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
-            {/* Static brochure */}
-            <a href="/brochure.pdf" download>
+            {/* Brochure as a page (no more PDF download) */}
+            <a href="/brochure">
               <button style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #444",background:"#111",color:"#fff",cursor:"pointer"}}>
-                Download Brochure (PDF)
+                View Overview
               </button>
             </a>
 
