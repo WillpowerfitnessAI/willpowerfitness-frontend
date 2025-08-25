@@ -1,5 +1,6 @@
 // pages/index.js
 import Head from 'next/head';
+import Image from 'next/image';
 import Footer from '../components/Footer';
 
 export default function Home() {
@@ -14,7 +15,18 @@ export default function Home() {
       </Head>
 
       <section className="hero">
-        <img className="logo" src="/logo.png" alt="WillpowerFitnessAI" />
+        {/* Logo (Next/Image for better caching & DPR handling) */}
+        <div className="logoWrap">
+          <Image
+            src="/logo.png"              // served from /public/logo.png
+            alt="WillpowerFitnessAI"
+            width={48}
+            height={48}
+            priority
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        </div>
+
         <h1>High-performance coaching, white-glove.</h1>
         <p className="sub">Elite results. Cancel anytime.</p>
 
@@ -35,7 +47,7 @@ export default function Home() {
             </button>
           </a>
 
-          <a href="/brochure.pdf" download>
+        <a href="/brochure.pdf" download>
             <button className="btn btn--ghost">Download Brochure (PDF)</button>
           </a>
         </div>
@@ -59,12 +71,22 @@ export default function Home() {
           text-align: center;
           padding: 2.25rem 1rem 3rem;
         }
-        .logo {
-          height: 56px;
-          opacity: 0.9;
+
+        /* Logo wrapper (works well with next/image) */
+        .logoWrap {
           margin: .25rem auto 1rem;
-          display: block;
+          opacity: .9;
+          height: 56px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
+        /* Style the actual <img> inside next/image */
+        .logoWrap :global(img) {
+          height: 56px;
+          width: auto;
+        }
+
         h1 {
           font-size: clamp(2rem, 6vw, 3.1rem);
           line-height: 1.12;
@@ -112,7 +134,8 @@ export default function Home() {
 
         /* Very small phones */
         @media (max-width: 360px) {
-          .logo { height: 44px; }
+          .logoWrap { height: 44px; }
+          .logoWrap :global(img) { height: 44px; }
           .btn { padding: .8rem .9rem; }
         }
       `}</style>
