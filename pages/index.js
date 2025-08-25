@@ -1,6 +1,5 @@
 // pages/index.js
 import Head from 'next/head';
-import Image from 'next/image';
 import Footer from '../components/Footer';
 
 export default function Home() {
@@ -15,18 +14,7 @@ export default function Home() {
       </Head>
 
       <section className="hero">
-        {/* Logo (Next/Image for better caching & DPR handling) */}
-        <div className="logoWrap">
-          <Image
-            src="/logo.png"              // served from /public/logo.png
-            alt="WillpowerFitnessAI"
-            width={48}
-            height={48}
-            priority
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        </div>
-
+        <img className="logo" src="/logo.png" alt="WillpowerFitnessAI" />
         <h1>High-performance coaching, white-glove.</h1>
         <p className="sub">Elite results. Cancel anytime.</p>
 
@@ -47,8 +35,9 @@ export default function Home() {
             </button>
           </a>
 
-        <a href="/brochure.pdf" download>
-            <button className="btn btn--ghost">Download Brochure (PDF)</button>
+          {/* New: brochure as a page, not a download */}
+          <a href="/brochure">
+            <button className="btn btn--ghost">View Brochure</button>
           </a>
         </div>
 
@@ -71,22 +60,12 @@ export default function Home() {
           text-align: center;
           padding: 2.25rem 1rem 3rem;
         }
-
-        /* Logo wrapper (works well with next/image) */
-        .logoWrap {
+        .logo {
+          height: 56px;
+          opacity: 0.9;
           margin: .25rem auto 1rem;
-          opacity: .9;
-          height: 56px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          display: block;
         }
-        /* Style the actual <img> inside next/image */
-        .logoWrap :global(img) {
-          height: 56px;
-          width: auto;
-        }
-
         h1 {
           font-size: clamp(2rem, 6vw, 3.1rem);
           line-height: 1.12;
@@ -98,7 +77,6 @@ export default function Home() {
           font-size: clamp(.95rem, 1.9vw, 1.05rem);
         }
 
-        /* Buttons: mobile first */
         .btnRow {
           display: grid;
           grid-template-columns: 1fr;
@@ -121,24 +99,16 @@ export default function Home() {
 
         .secure { font-size: 12px; opacity: .6; margin-top: 1rem; }
 
-        /* Small tablets: 2 columns */
         @media (min-width: 520px) {
-          .btnRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-
-        /* Desktop/tablet wide: inline buttons */
-        @media (min-width: 768px) {
           .btnRow { grid-template-columns: repeat(4, max-content); justify-content: center; }
           .btn { width: auto; }
         }
-
-        /* Very small phones */
         @media (max-width: 360px) {
-          .logoWrap { height: 44px; }
-          .logoWrap :global(img) { height: 44px; }
+          .logo { height: 44px; }
           .btn { padding: .8rem .9rem; }
         }
       `}</style>
     </main>
   );
 }
+
