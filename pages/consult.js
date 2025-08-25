@@ -80,17 +80,13 @@ export default function Consult() {
   const listRef = useRef(null);
 
   useEffect(()=>{ listRef.current?.scrollTo(0, listRef.current.scrollHeight); }, [messages]);
-
-  useEffect(()=>{
-    if (messages.length===1) setMessages(m=>[...m,{role:"assistant",text:questions[0].label}]);
-  },[]);
+  useEffect(()=>{ if (messages.length===1) setMessages(m=>[...m,{role:"assistant",text:questions[0].label}]); },[]);
 
   const currentQ = questions[step];
 
   function persistLeadMinimal(a){
     try {
       localStorage.setItem("lead_min", JSON.stringify({ name:a.name, email:a.email, ts:Date.now() }));
-      // fire-and-forget minimal lead (name/email only)
       const body = new Blob([JSON.stringify({ name:a.name, email:a.email, source:"consult-exit" })],
                             { type: 'application/json' });
       navigator.sendBeacon?.("https://api.willpowerfitnessai.com/api/lead-min", body);
@@ -209,7 +205,7 @@ export default function Consult() {
         { role:"assistant", text: `Nutrition: ${p.nutrition}` },
         { role:"assistant", text: p.nudge }
       ]);
-      persistLeadMinimal(nextAnswers); // keep only name/email if they bounce
+      persistLeadMinimal(nextAnswers);
     }
   };
 
@@ -217,8 +213,11 @@ export default function Consult() {
   const disabledBuy   = !buyUrl;
 
   return (
-    <main style={{minHeight:"100vh",background:"#0a0a0a",color:"#fff",
-                  display:"grid",placeItems:"center",padding:"2rem"}}>
+    <main
+      className="consult"
+      style={{minHeight:"100vh",background:"#0a0a0a",color:"#fff",
+              display:"grid",placeItems:"center",padding:"2rem"}}
+    >
       <section style={{width:"min(980px, 92vw)"}}>
         <h1 style={{fontSize:"2rem",marginBottom:"0.75rem"}}>Free Consultation</h1>
         <p style={{opacity:.8,margin:"0 0 1rem"}}>
@@ -226,9 +225,12 @@ export default function Consult() {
         </p>
 
         {/* Chat window */}
-        <div ref={listRef}
-             style={{height:"50vh",minHeight:360,overflowY:"auto",background:"#0f0f0f",
-                     border:"1px solid #222",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+        <div
+          ref={listRef}
+          className="chat"
+          style={{height:"50vh",minHeight:360,overflowY:"auto",background:"#0f0f0f",
+                  border:"1px solid #222",borderRadius:14,padding:"14px 16px",marginBottom:12}}
+        >
           {messages.map((m,i)=>(
             <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",margin:"6px 0"}}>
               <div style={{
@@ -262,7 +264,7 @@ export default function Consult() {
 
         {/* CTAs */}
         {step >= questions.length && (
-          <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
+          <div className="ctas" style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
             {/* Static brochure */}
             <a href="/brochure.pdf" download>
               <button style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #444",background:"#111",color:"#fff",cursor:"pointer"}}>
@@ -302,7 +304,33 @@ export default function Consult() {
       </section>
 
       <Footer />
+
+      {/* --- Responsive polish --- */}
+      <style jsx>{`
+        /* Mobile-first: buttons stack nicely */
+        .consult .ctas {
+          display: grid !important;
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+        /* Small tablets: two-up */
+        @media (min-width: 520px) {
+          .consult .ctas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        /* Wide/tablet/desktop: inline */
+        @media (min-width: 900px) {
+          .consult .ctas { grid-template-columns: repeat(4, max-content); justify-content: center; }
+          .consult .ctas :global(button) { width: auto; }
+        }
+
+        /* iOS: prevent zoom on input focus */
+        .consult :global(input) { font-size: 16px; }
+
+        /* Give phones a bit more chat height */
+        @media (max-width: 480px) {
+          .consult .chat { height: 56vh !important; }
+        }
+      `}</style>
     </main>
   );
 }
-
