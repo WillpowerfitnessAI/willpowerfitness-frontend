@@ -67,8 +67,6 @@ const questions = [
 ];
 
 export default function Consult() {
-  const buyUrl   = process.env.NEXT_PUBLIC_STRIPE_BUY_URL;
-  const trialUrl = process.env.NEXT_PUBLIC_STRIPE_TRIAL_URL;
   const API_BASE = "https://api.willpowerfitnessai.com";
 
   const [step, setStep] = useState(0);
@@ -241,9 +239,6 @@ export default function Consult() {
     }
   };
 
-  const disabledTrial = !trialUrl;
-  const disabledBuy   = !buyUrl;
-
   return (
     <main style={{minHeight:"100vh",background:"#0a0a0a",color:"#fff",
                   display:"grid",placeItems:"center",padding:"2rem"}}>
@@ -292,37 +287,31 @@ export default function Consult() {
         {/* CTAs */}
         {step >= questions.length && (
           <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
-            {/* Brochure as a page (no more PDF download) */}
+            {/* Overview page */}
             <a href="/brochure">
               <button style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #444",background:"#111",color:"#fff",cursor:"pointer"}}>
                 View Overview
               </button>
             </a>
 
-            {/* Personalized summary (PDF from fallback plan) */}
+            {/* Personalized summary (PDF) */}
             <button onClick={downloadSummaryPDF}
               style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #444",background:"#111",color:"#fff",cursor:"pointer"}}>
               Download My Summary (PDF)
             </button>
 
-            {/* Trial */}
-            <a href={trialUrl || "#"}
-               onClick={(e)=>{ if(disabledTrial){ e.preventDefault(); alert("Trial link not configured."); return; }
-                               sendFullIntake("trial"); }}>
+            {/* Trial → checkout */}
+            <a href="/checkout?intent=trial" onClick={()=>sendFullIntake("trial")}>
               <button style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #1f1f1f",
-                              background:"#1a1a1a",color:"#fff",cursor:"pointer",
-                              opacity: disabledTrial ? .8 : 1}}>
+                              background:"#1a1a1a",color:"#fff",cursor:"pointer"}}>
                 Start Trial
               </button>
             </a>
 
-            {/* Join */}
-            <a href={buyUrl || "#"}
-               onClick={(e)=>{ if(disabledBuy){ e.preventDefault(); alert("Join link not configured."); return; }
-                               sendFullIntake("join"); }}>
+            {/* Join → checkout (no price in label) */}
+            <a href="/checkout?intent=join" onClick={()=>sendFullIntake("join")}>
               <button style={{padding:"0.85rem 1rem",borderRadius:12,border:"1px solid #fff",
-                              background:"#fff",color:"#000",cursor:"pointer",
-                              opacity: disabledBuy ? .8 : 1}}>
+                              background:"#fff",color:"#000",cursor:"pointer"}}>
                 Join Now
               </button>
             </a>
