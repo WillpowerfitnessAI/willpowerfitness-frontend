@@ -1,49 +1,47 @@
 // pages/login.js
 import { useState } from 'react';
 import Layout from '../components/Layout.jsx';
+import { supabase } from '../lib/supabaseClient';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
-  async function requestLoginLink(e) {
+  const requestLoginLink = async (e) => {
     e.preventDefault();
     setMsg('');
-    if (!email) return setMsg('Enter your email.');
+
+    const value = email.trim();
+    if (!value) {
+      setMsg('Enter your email.');
+      return;
+    }
 
     try {
       setBusy(true);
-      const res = await fetch('/api/login-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+
+      // Send a Supabase magic link that redirects to /auth/callback
+      const { error } = await supabase.auth.signInWithOtp({
+        email: value,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
-      const data = await res.json();
 
-      if (!res.ok) {
-        if (data?.error === 'not_subscribed') {
-          setMsg('No active membership found for this email. Start a trial or subscribe.');
-        } else if (data?.error === 'invalid_email') {
-          setMsg('That email looks invalid.');
-        } else {
-          setMsg('Could not send login link. Try again.');
-        }
+      if (error) {
+        // Common errors: rate limit, invalid redirect, provider not configured
+        setMsg(error.message || 'Could not send login link. Try again.');
         return;
-      }
+        }
 
-      // Direct login: jump to the Supabase magic link (no email click needed)
-      if (data?.login_url) {
-        window.location.assign(data.login_url);
-      } else {
-        setMsg('Login link not available. Try again.');
-      }
+      setMsg('Check your email for the login link.');
     } catch {
       setMsg('Network error. Try again.');
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   return (
     <Layout title="Member login">
@@ -55,10 +53,11 @@ export default function Login() {
           <input
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             placeholder="you@domain.com"
             className="input"
             style={{ width: 360, marginRight: 8 }}
+            required
           />
           <button className="btn btn-primary" disabled={busy}>
             {busy ? 'Working…' : 'Email me a login link'}
@@ -76,4 +75,5 @@ export default function Login() {
     </Layout>
   );
 }
+
 
