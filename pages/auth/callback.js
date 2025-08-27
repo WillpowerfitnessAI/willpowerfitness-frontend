@@ -1,7 +1,7 @@
 // pages/auth/callback.js
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../utils/supabaseClient';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE; // e.g. https://api.willpowerfitnessai.com
 
