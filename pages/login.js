@@ -1,7 +1,7 @@
 // pages/login.js
 import { useState } from 'react';
 import Layout from '../components/Layout.jsx';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../utils/supabaseClient';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -18,20 +18,17 @@ export default function Login() {
     try {
       setBusy(true);
 
-      // Build redirect only on the client
       const redirectTo =
         typeof window !== 'undefined'
           ? `${window.location.origin}/auth/callback`
           : '/auth/callback';
 
-      // Send Supabase magic link to /auth/callback
       const { error } = await supabase.auth.signInWithOtp({
         email: value,
         options: { emailRedirectTo: redirectTo },
       });
 
       if (error) {
-        // Common cases: rate limit, invalid redirect URL, SMTP not configured
         setMsg(error.message || 'Could not send login link. Try again.');
         return;
       }
@@ -76,4 +73,3 @@ export default function Login() {
     </Layout>
   );
 }
-
