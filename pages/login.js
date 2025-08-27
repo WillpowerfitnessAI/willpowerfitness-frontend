@@ -13,7 +13,7 @@ export default function Login() {
     setMsg('');
 
     const value = email.trim();
-    if (!value) return setMsg('Enter your email.');
+    if (!value) { setMsg('Enter your email.'); return; }
 
     try {
       setBusy(true);
@@ -32,7 +32,6 @@ export default function Login() {
         setMsg(error.message || 'Could not send login link. Try again.');
         return;
       }
-
       setMsg('Check your email for the login link.');
     } catch (err) {
       setMsg(err?.message || 'Network error. Try again.');
@@ -65,11 +64,9 @@ export default function Login() {
         {msg && <p style={{ marginTop: 12 }}>{msg}</p>}
 
         <hr style={{ margin: '24px 0', opacity: 0.2 }} />
-
-        <p>
-          Not a member yet? <a href="/subscribe">See membership</a>
-        </p>
+        <p>Not a member yet? <a href="/subscribe">See membership</a></p>
       </main>
     </Layout>
   );
 }
+
