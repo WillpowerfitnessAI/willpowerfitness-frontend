@@ -12,45 +12,39 @@ export default function AuthCallback() {
   useEffect(() => {
     (async () => {
       try {
-        // Handle errors Supabase appends to the URL (expired/used link, etc.)
+        // If Supabase appended an error (expired/used link), bail fast
         const url = new URL(window.location.href);
-        const qsErr = url.searchParams.get('error') || url.hash.match(/error=([^&]+)/)?.[1];
-        const qsDesc = url.searchParams.get('error_description') || url.hash.match(/error_description=([^&]+)/)?.[1];
-        if (qsErr) {
-          const reason = decodeURIComponent(qsDesc || qsErr);
-          setMsg(`Login error: ${reason}`);
+        const err = url.searchParams.get('error') || url.hash.match(/error=([^&]+)/)?.[1];
+        const desc = url.searchParams.get('error_description') || url.hash.match(/error_description=([^&]+)/)?.[1];
+        if (err) {
+          setMsg(`Login error: ${decodeURIComponent(desc || err)}`);
           setTimeout(() => router.replace('/login'), 2000);
           return;
         }
 
-        // Turn the URL hash into a Supabase session
+        // 1) Turn URL hash into a Supabase session
         const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
         if (error) throw error;
 
-        // Get the user email
+        // 2) Get the email
         const { data: { user } } = await supabase.auth.getUser();
         if (!user?.email) throw new Error('No user email after login');
 
-        // Ask backend if this email is a member (set by the Stripe webhook)
-        const res = await fetch(`${API_BASE}/api/me?email=${encodeURIComponent(user.email)}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          cache: 'no-store',
-        });
+        // 3) Ask the backend if they’re a member (Stripe webhook populates this)
+        const res = await fetch(`${API_BASE}/api/me?email=${encodeURIComponent(user.email)}`, { cache: 'no-store' });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.error || 'Membership lookup failed');
 
-        // Route based on membership
         if (payload.is_member) {
-          setMsg('Welcome back — redirecting to your dashboard…');
+          setMsg('Welcome back — redirecting…');
           router.replace('/dashboard');
         } else {
           setMsg('Membership required — redirecting…');
           router.replace('/membership');
         }
-      } catch (err) {
-        console.error(err);
-        setMsg(`Login error: ${err?.message || 'Unknown error'}`);
+      } catch (e) {
+        console.error(e);
+        setMsg(`Login error: ${e?.message || 'Unknown error'}`);
         setTimeout(() => router.replace('/login'), 2500);
       }
     })();
