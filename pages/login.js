@@ -13,31 +13,32 @@ export default function Login() {
     setMsg('');
 
     const value = email.trim();
-    if (!value) {
-      setMsg('Enter your email.');
-      return;
-    }
+    if (!value) return setMsg('Enter your email.');
 
     try {
       setBusy(true);
 
-      // Send a Supabase magic link that redirects to /auth/callback
+      // Build redirect only on the client
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/callback`
+          : '/auth/callback';
+
+      // Send Supabase magic link to /auth/callback
       const { error } = await supabase.auth.signInWithOtp({
         email: value,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        options: { emailRedirectTo: redirectTo },
       });
 
       if (error) {
-        // Common errors: rate limit, invalid redirect, provider not configured
+        // Common cases: rate limit, invalid redirect URL, SMTP not configured
         setMsg(error.message || 'Could not send login link. Try again.');
         return;
-        }
+      }
 
       setMsg('Check your email for the login link.');
-    } catch {
-      setMsg('Network error. Try again.');
+    } catch (err) {
+      setMsg(err?.message || 'Network error. Try again.');
     } finally {
       setBusy(false);
     }
@@ -75,5 +76,4 @@ export default function Login() {
     </Layout>
   );
 }
-
 
