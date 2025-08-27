@@ -12,8 +12,9 @@ export default function AuthCallback() {
   useEffect(() => {
     (async () => {
       try {
-        // If Supabase appended an error (expired/used link), bail fast
         const url = new URL(window.location.href);
+
+        // If Supabase appended an auth error (expired/used link), bounce early
         const err = url.searchParams.get('error') || url.hash.match(/error=([^&]+)/)?.[1];
         const desc = url.searchParams.get('error_description') || url.hash.match(/error_description=([^&]+)/)?.[1];
         if (err) {
@@ -22,15 +23,27 @@ export default function AuthCallback() {
           return;
         }
 
-        // 1) Turn URL hash into a Supabase session
-        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-        if (error) throw error;
+        // --- Handle both Supabase redirect modes ---
+        // 1) PKCE code flow: ?code=...&state=...
+        const code = url.searchParams.get('code');
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
+        // 2) Hash-token flow: #access_token=...&refresh_token=...
+        else if (url.hash.includes('access_token')) {
+          // Parses the hash and stores the session for you
+          const { error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+          if (error) throw error;
+        } else {
+          throw new Error('No auth credentials found in callback URL');
+        }
 
-        // 2) Get the email
+        // Get the logged-in user’s email
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user?.email) throw new Error('No user email after login');
+        if (!user?.email) throw new Error('No user after session exchange');
 
-        // 3) Ask the backend if they’re a member (Stripe webhook populates this)
+        // Ask backend if this email is a member (Stripe webhook sets this)
         const res = await fetch(`${API_BASE}/api/me?email=${encodeURIComponent(user.email)}`, { cache: 'no-store' });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.error || 'Membership lookup failed');
