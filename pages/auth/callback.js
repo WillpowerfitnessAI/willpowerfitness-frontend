@@ -3,16 +3,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../utils/supabaseClient';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE; // e.g. https://api.willpowerfitnessai.com
+const API_BASE =
+  (process.env.NEXT_PUBLIC_API_BASE && process.env.NEXT_PUBLIC_API_BASE.trim()) ||
+  (process.env.NEXT_PUBLIC_API_BASE_URL && process.env.NEXT_PUBLIC_API_BASE_URL.trim()) ||
+  'https://api.willpowerfitnessai.com';
 
-function parseHashTokens(hash) {
-  // hash looks like: #access_token=...&refresh_token=...&...
+function parseHash(hash) {
   const sp = new URLSearchParams((hash || '').replace(/^#/, ''));
   return {
-    access_token: sp.get('access_token') || null,
-    refresh_token: sp.get('refresh_token') || null,
-    error: sp.get('error') || null,
-    error_description: sp.get('error_description') || null,
+    access_token: sp.get('access_token'),
+    refresh_token: sp.get('refresh_token'),
+    error: sp.get('error'),
+    error_description: sp.get('error_description'),
   };
 }
 
@@ -25,67 +27,53 @@ export default function AuthCallback() {
       try {
         const url = new URL(window.location.href);
 
-        // Surface auth errors from Supabase (expired/used link, etc.)
         const qsErr = url.searchParams.get('error');
         const qsErrDesc = url.searchParams.get('error_description');
-        const hashInfo = parseHashTokens(url.hash);
-        if (qsErr || hashInfo.error) {
-          setMsg(`Login error: ${decodeURIComponent(qsErrDesc || hashInfo.error_description || qsErr || hashInfo.error)}`);
-          setTimeout(() => router.replace('/login'), 2000);
+        const hash = parseHash(url.hash);
+        if (qsErr || hash.error) {
+          setMsg(`Login error: ${decodeURIComponent(qsErrDesc || hash.error_description || qsErr || hash.error)}`);
+          setTimeout(() => router.replace('/login'), 1800);
           return;
         }
 
-        // --- Handle both redirect modes ---
-
-        // 1) PKCE code flow: ?code=... (newer Supabase / OTP links sometimes use this)
         const code = url.searchParams.get('code');
         if (code) {
-          // Try the modern signature first (full URL); fall back to passing code only.
-          let exchanged = false;
           try {
             const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
             if (error) throw error;
-            exchanged = true;
           } catch {
-            const { error: e2 } = await supabase.auth.exchangeCodeForSession(code);
-            if (e2) throw e2;
-            exchanged = true;
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) throw error;
           }
-          if (!exchanged) throw new Error('Unable to exchange auth code for session');
-        }
-
-        // 2) Hash-token flow: #access_token=...&refresh_token=... (classic magic link)
-        if (!code && hashInfo.access_token && hashInfo.refresh_token) {
+        } else if (hash.access_token && hash.refresh_token) {
           const { error } = await supabase.auth.setSession({
-            access_token: hashInfo.access_token,
-            refresh_token: hashInfo.refresh_token,
+            access_token: hash.access_token,
+            refresh_token: hash.refresh_token,
           });
           if (error) throw error;
-        }
-
-        // If neither path hit, we have no credentials
-        if (!code && !(hashInfo.access_token && hashInfo.refresh_token)) {
+        } else {
           throw new Error('No auth credentials found in callback URL');
         }
 
-        // Fetch the user & membership
         const { data: { user } } = await supabase.auth.getUser();
         if (!user?.email) throw new Error('No user after session');
-        const r = await fetch(`${API_BASE}/api/me?email=${encodeURIComponent(user.email)}`, { cache: 'no-store' });
-        const payload = await r.json();
-        if (!r.ok) throw new Error(payload?.error || 'Membership lookup failed');
 
-        if (payload.is_member) {
-          setMsg('Welcome back — redirecting…');
-          router.replace('/dashboard');
-        } else {
-          setMsg('Membership required — redirecting…');
-          router.replace('/membership');
+        const urlMe = `${API_BASE}/api/me?email=${encodeURIComponent(user.email)}`;
+        const res = await fetch(urlMe, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          const body = await res.text();
+          throw new Error(`Membership API ${res.status} (non-JSON). URL: ${urlMe}. Body: ${body.slice(0, 180)}…`);
         }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || `Membership API ${res.status}`);
+
+        router.replace(data.is_member ? '/dashboard' : '/membership');
       } catch (e) {
         console.error(e);
         setMsg(`Login error: ${e?.message || 'Unknown error'}`);
-        setTimeout(() => router.replace('/login'), 2500);
+        setTimeout(() => router.replace('/login'), 2200);
       }
     })();
   }, [router]);
@@ -96,3 +84,4 @@ export default function AuthCallback() {
     </main>
   );
 }
+
