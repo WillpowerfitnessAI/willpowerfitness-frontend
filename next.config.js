@@ -15,6 +15,8 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https:",
       // ✅ allow HTTPS fonts (fixes your CSP font error)
       "font-src 'self' data: https:",
+      // ✅ explicitly allow the PWA/manifest file
+      "manifest-src 'self'",
       // API & realtime calls your app needs
       "connect-src 'self' https://api.willpowerfitnessai.com https://*.supabase.co https://*.stripe.com https://*.vercel-insights.com",
       // Stripe iframes
@@ -33,3 +35,4 @@ module.exports = {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
 };
+
