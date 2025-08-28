@@ -12,7 +12,8 @@ export default function Login() {
     e.preventDefault();
     setMsg('');
 
-    const value = email.trim();
+    // Trim and lower-case the email before sending
+    const value = email.trim().toLowerCase();
     if (!value) { setMsg('Enter your email.'); return; }
 
     try {
