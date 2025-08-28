@@ -29,6 +29,11 @@ export default function Home() {
             <button className="btn btn--light">Join Now</button>
           </a>
 
+          {/* NEW: Member Login */}
+          <a href="/login">
+            <button className="btn btn--ghost">Member Login</button>
+          </a>
+
           {/* Brochure is a page */}
           <a href="/brochure">
             <button className="btn btn--ghost">View Brochure</button>
@@ -93,7 +98,8 @@ export default function Home() {
         .secure { font-size: 12px; opacity: .6; margin-top: 1rem; }
 
         @media (min-width: 520px) {
-          .btnRow { grid-template-columns: repeat(4, max-content); justify-content: center; }
+          /* was repeat(4, ...); now 5 buttons inc. Login */
+          .btnRow { grid-template-columns: repeat(5, max-content); justify-content: center; }
           .btn { width: auto; }
         }
         @media (max-width: 360px) {
