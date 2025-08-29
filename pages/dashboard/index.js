@@ -27,7 +27,8 @@ async function sendMessage(message, email) {
 export default function Dashboard() {
   return (
     <RequireMember>
-      <Layout title="Dashboard">
+      {/* Hide the top-right nav on app pages */}
+      <Layout title="Dashboard" showNav={false}>
         <h1>Dashboard</h1>
 
         {/* Feature cards -> real routes */}
@@ -55,5 +56,4 @@ export default function Dashboard() {
     </RequireMember>
   );
 }
-
 
