@@ -15,13 +15,13 @@ export default function Layout({ title = 'WillpowerFitnessAI', children }) {
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        {/* Android/PWA manifest */}
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="theme-color" content="#000000" />
       </Head>
 
       <header className="site-header">
         <Link href="/" className="brand" aria-label="WillpowerFitnessAI home">
-          {/* Use the asset that exists in /public */}
           <img src="/logo.png" alt="WillpowerFitnessAI" height="28" />
           <span className="brand-text">WillpowerFitnessAI</span>
         </Link>
