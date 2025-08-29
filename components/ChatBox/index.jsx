@@ -1,79 +1,83 @@
-import React, { useEffect, useRef, useState } from 'react';
-import MessageBubble from '../MessageBubble.jsx';
+// components/ChatBox/index.jsx
+import { useState } from 'react';
 
-export default function ChatBox() {
-  const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Welcome. What’s your fitness big objective?' }
-  ]);
+export default function ChatBox({ onSend, apiBase }) {
   const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const listRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [lines, setLines] = useState([
+    "Welcome. What's your fitness big objective?",
+  ]);
 
-  useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
+  const add = (s) => setLines((prev) => [...prev, s]);
+
+  async function defaultSend(message, email) {
+    const BASE =
+      (apiBase ||
+        process.env.NEXT_PUBLIC_API_BASE ||
+        process.env.NEXT_PUBLIC_API_BASE_URL || // fallback if you still have this var
+        'https://api.willpowerfitnessai.com'
+      ).replace(/\/$/, '');
+
+    const res = await fetch(`${BASE}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, email }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Chat failed (${res.status})`);
     }
-  }, [messages]);
+    const data = await res.json();
+    return data.reply;
+  }
 
-  async function sendMessage(e) {
-    e.preventDefault();
-    if (!input.trim() || sending) return;
+  async function handleSend() {
+    const msg = input.trim();
+    if (!msg || busy) return;
 
-    const userMsg = { role: 'user', text: input.trim() };
-    setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setSending(true);
+    add(msg);
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg.text })
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', text: data.reply ?? 'OK.' }]);
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', text: 'Sorry—something went wrong. Try again.' }]);
+      setBusy(true);
+      const sender = typeof onSend === 'function' ? onSend : defaultSend;
+      const reply = await sender(msg);
+      add(reply || '…');
+    } catch (e) {
+      console.error(e);
+      add('Sorry—something went wrong. Try again.');
     } finally {
-      setSending(false);
+      setBusy(false);
     }
   }
 
   return (
-    <div className="card" style={{ padding: 16 }}>
-      <div
-        ref={listRef}
+    <div>
+      <textarea
+        value={lines.join('\n')}
+        readOnly
+        rows={10}
         style={{
-          height: 320,
-          overflowY: 'auto',
-          border: '1px solid #eee',
-          borderRadius: 12,
-          padding: 12,
-          marginBottom: 12
+          width: '100%',
+          background: '#111',
+          color: '#fff',
+          padding: 8,
+          borderRadius: 8,
+          border: '1px solid #444',
         }}
-      >
-        {messages.map((m, i) => (
-          <MessageBubble key={i} role={m.role} text={m.text} />
-        ))}
+      />
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message"
+          style={{ flex: 1 }}
+        />
+        <button className="btn btn-primary" onClick={handleSend} disabled={busy}>
+          {busy ? 'Sending…' : 'Send'}
+        </button>
       </div>
-
-      <form onSubmit={sendMessage}>
-        <div className="flex" style={{ gap: 8 }}>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={sending ? 'Sending…' : 'Type a message'}
-            disabled={sending}
-            className="input"
-            style={{ flex: 1 }}
-          />
-          <button className="btn btn-primary" disabled={sending}>
-            {sending ? '…' : 'Send'}
-          </button>
-        </div>
-      </form>
     </div>
   );
 }
