@@ -1,0 +1,10 @@
+﻿node_modules/
+**/node_modules/
+.next/
+dist/
+out/
+build/
+*.log
+.env
+.env.local
+.env.*.local
