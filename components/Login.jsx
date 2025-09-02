@@ -1,66 +1,50 @@
 // components/Login.jsx
-import { useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "../utils/supabaseClient";
 
-export default function Login() {
+export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setErr("");
-    setBusy(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    setBusy(false);
-    if (error) {
-      setErr(error.message || "Login failed");
-      return;
-    }
-    window.location.href = "/dashboard"; // adjust as needed
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+
+    if (error) return setErr(error.message);
+    onLogin?.(email);
+    window.location.href = "/chat"; // or wherever you want after login
   };
 
   return (
-    <div className="mx-auto mt-10 max-w-md rounded-xl bg-white p-6 shadow-md">
-      <h2 className="mb-4 text-center text-xl font-bold">Login to WillpowerFitness AI</h2>
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div>
-          <label className="mb-1 block text-sm font-medium">Email</label>
-          <input
-            type="email"
-            className="w-full rounded border px-3 py-2"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Password</label>
-          <input
-            type="password"
-            className="w-full rounded border px-3 py-2"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-        </div>
-        {err && <p className="text-sm text-red-600">{err}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded bg-teal-500 px-4 py-2 font-semibold text-neutral-900 hover:bg-teal-400 disabled:opacity-60"
-        >
-          {busy ? "Signing in…" : "Continue"}
-        </button>
-      </form>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+      <h2 className="text-lg font-semibold mb-4">Log in to WillpowerFitness AI</h2>
+      <input
+        type="email"
+        placeholder="Email"
+        className="w-full rounded-md border border-white/15 bg-black/40 px-3 py-2 mb-3"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        className="w-full rounded-md border border-white/15 bg-black/40 px-3 py-2 mb-3"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      {err && <p className="text-sm text-red-400 mb-3">{err}</p>}
+      <button
+        onClick={handleLogin}
+        disabled={loading}
+        className="w-full rounded-xl bg-teal-500 px-4 py-2 font-semibold text-neutral-900 hover:bg-teal-400 disabled:opacity-50"
+      >
+        {loading ? "Logging in…" : "Continue"}
+      </button>
     </div>
   );
 }
+

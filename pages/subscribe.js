@@ -1,36 +1,52 @@
 // pages/subscribe.js
-import Head from "next/head";
-import Script from "next/script";
-import { useEffect } from "react";
-import supabase from "../utils/supabaseClient";
+import { useState } from "react";
+import { supabase } from "../utils/supabaseClient";
 
 export default function Subscribe() {
-  useEffect(() => {
-    async function testSupabase() {
-      const { data, error } = await supabase.from("user_profiles").select("*");
-      console.log("🚀 Supabase test result:", { data, error });
-    }
-    testSupabase();
-  }, []);
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setErr("");
+    setLoading(true);
+
+    const form = new FormData(e.currentTarget);
+    const name = form.get("name");
+    const goal = form.get("goal");
+    const email = form.get("email");
+    const password = form.get("password");
+
+    // create the user (email+password) and attach metadata
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, goal } },
+    });
+
+    setLoading(false);
+    if (error) return setErr(error.message);
+
+    // simple redirect after signup
+    window.location.href = "/success.html";
+  }
 
   return (
-    <>
-      <Head>
-        <title>Join WillpowerFitness AI</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </Head>
-
-      <Script async src="https://js.stripe.com/v3/buy-button.js" />
-
-      <div style={{ textAlign: "center", padding: "50px", fontFamily: "sans-serif" }}>
-        <h1>Join WillpowerFitness AI</h1>
-        <p>Train smarter. Think stronger. Move better.</p>
-
-        <stripe-buy-button
-          buy-button-id="buy_btn_1Rk2WB1w2TDvX8i03vytJ2fXd"
-          publishable-key="pk_live_51RWp4dIw2TDvX8i03cm210H32WTmtKkOvoD2mKiHfKIZDK7AdiLCWQSDxLoV0BjZR1MLP00k1IW1PTF9MGGEAZS0yLxj6tAS"
-        ></stripe-buy-button>
+    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+      <div className="mx-auto w-full max-w-3xl px-4 py-10">
+        <h1 className="text-2xl font-bold mb-6">Start Elite Access</h1>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input name="name" placeholder="Your Name" className="w-full rounded-md border border-white/15 bg-black/40 px-3 py-2" />
+          <textarea name="goal" placeholder="Your Fitness Goals" className="w-full rounded-md border border-white/15 bg-black/40 px-3 py-2" />
+          <input name="email" type="email" placeholder="Email" required className="w-full rounded-md border border-white/15 bg-black/40 px-3 py-2" />
+          <input name="password" type="password" placeholder="Password" required className="w-full rounded-md border border-white/15 bg-black/40 px-3 py-2" />
+          {err && <p className="text-sm text-red-400">{err}</p>}
+          <button disabled={loading} className="rounded-xl bg-teal-500 px-6 py-3 font-semibold text-neutral-900 hover:bg-teal-400 disabled:opacity-50">
+            {loading ? "Creating…" : "Continue"}
+          </button>
+        </form>
       </div>
-    </>
+    </main>
   );
 }
+
