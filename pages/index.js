@@ -46,13 +46,7 @@ export default function Home() {
             >
               Start Elite Access
             </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-xl border border-white/15
-                         px-6 py-3 hover:bg-white/10 transition-colors"
-            >
-              Log in
-            </Link>
+            {/* removed duplicate hero Log in button */}
           </div>
 
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
