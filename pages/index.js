@@ -21,7 +21,7 @@ export default function Home() {
           {/* Only link to routes you actually have */}
           <nav className="hidden gap-6 text-sm text-neutral-300 md:flex">
             <Link href="/login" className="hover:text-white">Member Login</Link>
-            <Link href="/brochure.html" className="hover:text-white">Brochure</Link>
+            <Link href="/brochure" className="hover:text-white">Brochure</Link>
           </nav>
         </header>
 
