@@ -1,5 +1,7 @@
 // /pages/index.js
 import Link from "next/link";
+import Image from "next/image";
+import logo from "../public/logo.png"; // make sure the file name is exactly "logo.png"
 
 export default function Home() {
   return (
@@ -11,8 +13,13 @@ export default function Home() {
         {/* === Header with working logo === */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Your repo file is public/logo.png */}
-            <img src="/logo.png" alt="WillpowerFitness AI" className="h-10 w-auto sm:h-12" />
+            <Image
+              src={logo}
+              alt="WillpowerFitness AI"
+              priority
+              className="h-10 w-auto sm:h-12"
+              sizes="(max-width: 640px) 40px, 48px"
+            />
             <span className="hidden text-sm font-semibold text-neutral-300 sm:block">
               WillpowerFitness AI
             </span>
