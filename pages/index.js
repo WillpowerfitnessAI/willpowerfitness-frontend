@@ -12,15 +12,15 @@ export default function Home() {
       <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-10">
         {/* === Header with working logo === */}
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Image
               src={logo}
               alt="WillpowerFitness AI"
               priority
-              className="h-10 w-auto sm:h-12"
-              sizes="(max-width: 640px) 40px, 48px"
+              className="h-8 w-auto sm:h-10"
+              sizes="(max-width: 640px) 32px, 40px"
             />
-            <span className="hidden text-sm font-semibold text-neutral-300 sm:block">
+            <span className="block text-xs font-semibold text-neutral-300 sm:text-sm">
               WillpowerFitness AI
             </span>
           </div>
