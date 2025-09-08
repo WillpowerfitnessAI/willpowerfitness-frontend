@@ -1,7 +1,7 @@
 // /pages/index.js
 import Link from "next/link";
 import Image from "next/image";
-import logo from "../public/logo.png"; // make sure the file name is exactly "logo.png"
+import logo from "../public/logo.png"; // ensure this file exists at /public/logo.png
 
 export default function Home() {
   return (
@@ -12,23 +12,26 @@ export default function Home() {
       <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-10">
         {/* === Header with working logo === */}
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Image
               src={logo}
               alt="WillpowerFitness AI"
               priority
-              className="h-8 w-auto sm:h-10"
-              sizes="(max-width: 640px) 32px, 40px"
+              className="h-10 w-auto sm:h-12"
+              sizes="(max-width: 640px) 40px, 48px"
             />
-            <span className="block text-xs font-semibold text-neutral-300 sm:text-sm">
+            <span className="text-sm font-semibold text-neutral-300">
               WillpowerFitness AI
             </span>
           </div>
 
-          {/* Only link to routes you actually have */}
-          <nav className="hidden gap-6 text-sm text-neutral-300 md:flex">
-            <Link href="/login" className="hover:text-white">Member Login</Link>
-            <Link href="/brochure" className="hover:text-white">Brochure</Link>
+          {/* Make nav visible on mobile; keep only Login per the plan */}
+          <nav className="flex items-center text-sm text-neutral-300">
+            <Link href="/login" className="hover:text-white">
+              {/* short label on phones, long label on >= sm */}
+              <span className="sm:hidden">Login</span>
+              <span className="hidden sm:inline">Member Login</span>
+            </Link>
           </nav>
         </header>
 
@@ -48,12 +51,10 @@ export default function Home() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/subscribe"
-              className="inline-flex items-center justify-center rounded-xl bg-teal-500 px-6 py-3
-                         font-semibold text-neutral-900 hover:bg-teal-400 transition-colors"
+              className="inline-flex items-center justify-center rounded-xl bg-teal-500 px-6 py-3 font-semibold text-neutral-900 hover:bg-teal-400 transition-colors"
             >
               Start Elite Access
             </Link>
-            {/* removed duplicate hero Log in button */}
           </div>
 
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
