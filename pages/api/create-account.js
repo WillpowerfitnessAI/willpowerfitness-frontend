@@ -1,60 +1,40 @@
-import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-// Admin client: service role key (server only!)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
+// pages/api/create-account.js
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'method_not_allowed' });
+  }
 
   try {
-    const { session_id, name, goal, password } = req.body || {};
-    if (!session_id || !password) {
-      return res.status(400).json({ error: "Missing session_id or password" });
+    let { email, password, name } = req.body || {};
+    email = (email || '').trim().toLowerCase();
+    name = (name || '').trim();
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'email_and_password_required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'weak_password' });
     }
 
-    // Re-verify payment
-    const session = await stripe.checkout.sessions.retrieve(session_id);
-    if (session.payment_status !== "paid") {
-      return res.status(402).json({ error: "Payment not completed" });
-    }
+    const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || 'https://api.willpowerfitnessai.com').replace(/\/$/, '');
 
-    const email = session.customer_details?.email || session.customer_email;
-    if (!email) return res.status(400).json({ error: "No email on session" });
-
-    // Create user with Admin API
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        name: name || "",
-        goal: goal || "",
-        stripe_customer_id: session.customer,
-      },
+    const upstream = await fetch(`${API_BASE}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
     });
-    if (error) return res.status(400).json({ error: error.message });
 
-    // Optional: mark membership active in your profiles table
-    // Requires a "profiles" table with id (uuid) = auth.users.id
+    const text = await upstream.text();
+    let json;
     try {
-      await supabaseAdmin.from("profiles").upsert({
-        id: data.user.id,
-        email,
-        name: name || "",
-        goal: goal || "",
-        stripe_customer_id: session.customer,
-        membership_active: true,
-      });
-    } catch (_) {}
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      json = { error: text || 'invalid_upstream_response' };
+    }
 
-    return res.json({ ok: true });
+    return res.status(upstream.status).json(json);
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: e.message || 'proxy_failed' });
   }
 }
+
