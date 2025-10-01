@@ -1,12 +1,8 @@
 // /lib/checkout.ts
-
 export async function startBackendCheckout(payload: {
-  email: string;
-  name?: string;
-  goal?: string;
-  intent?: string;
+  email: string; name?: string; goal?: string; intent?: string;
 }) {
-  // Call the same-origin proxy route to avoid CORS
+  // Call our same-origin proxy -> avoids CORS
   const res = await fetch(`/api/checkout`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -15,11 +11,8 @@ export async function startBackendCheckout(payload: {
 
   const raw = await res.text();
   let data: any = null;
-  try {
-    data = raw ? JSON.parse(raw) : null;
-  } catch {
-    throw new Error(raw || "Invalid response from server");
-  }
+  try { data = raw ? JSON.parse(raw) : null; }
+  catch { throw new Error(raw || "Invalid response from server"); }
 
   if (!res.ok) {
     throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
@@ -28,6 +21,6 @@ export async function startBackendCheckout(payload: {
     throw new Error("No URL returned from checkout");
   }
 
-  // Redirect to Stripe Checkout
+  // Go to Stripe Checkout
   window.location.href = data.url;
 }
