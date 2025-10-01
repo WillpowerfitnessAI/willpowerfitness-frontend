@@ -3,10 +3,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { startBackendCheckout } from "../lib/checkout";
 
-// Optional: instant bypass via Payment Link (leave OFF if you want backend)
+// Optional: instant bypass via Payment Link (useful only for testing)
+// Make sure NEXT_PUBLIC_USE_PAYMENT_LINK is FALSE when using the backend flow.
 const USE_PAYMENT_LINK =
-  (process.env.NEXT_PUBLIC_USE_PAYMENT_LINK || "").toString().toLowerCase() === "1" ||
-  (process.env.NEXT_PUBLIC_USE_PAYMENT_LINK || "").toString().toLowerCase() === "true";
+  (process.env.NEXT_PUBLIC_USE_PAYMENT_LINK || "")
+    .toString()
+    .toLowerCase() === "1" ||
+  (process.env.NEXT_PUBLIC_USE_PAYMENT_LINK || "")
+    .toString()
+    .toLowerCase() === "true";
+
 const STRIPE_PAYMENT_LINK = (process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK || "").trim();
 
 export default function SubscribePage() {
@@ -31,9 +37,11 @@ export default function SubscribePage() {
 
     try {
       // Remember last email so /success can recover it if Stripe doesn't echo it back
-      try { localStorage.setItem("wp_last_email", email || ""); } catch {}
+      try {
+        localStorage.setItem("wp_last_email", email || "");
+      } catch {}
 
-      // 0) Optional: Payment Link bypass (for testing only)
+      // 0) Optional: Payment Link bypass (for quick testing only)
       if (USE_PAYMENT_LINK && STRIPE_PAYMENT_LINK) {
         const u = new URL(STRIPE_PAYMENT_LINK);
         if (email) u.searchParams.set("prefilled_email", email);
@@ -44,7 +52,7 @@ export default function SubscribePage() {
       // 1) Backend-driven Stripe Checkout (this will redirect)
       await startBackendCheckout({ email, name, goal, intent: intent || "join" });
 
-      // no setLoading(false) here — you’ll navigate away to Stripe
+      // No setLoading(false) here; you’ll be navigating to Stripe
     } catch (error) {
       setErr(error?.message || "Checkout failed");
       setLoading(false);

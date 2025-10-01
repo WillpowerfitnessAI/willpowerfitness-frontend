@@ -1,24 +1,43 @@
-export const API_BASE =
+// /lib/checkout.ts
+const API_BASE =
   (process.env.NEXT_PUBLIC_API_BASE || "https://api.willpowerfitnessai.com").replace(/\/$/, "");
 
-export async function startBackendCheckout(
-  payload: { email: string; name?: string; goal?: string; intent?: string }
-) {
+export async function startBackendCheckout(params: {
+  email: string;
+  name?: string;
+  goal?: string;
+  intent?: string;
+}) {
+  const { email, name, goal, intent = "join" } = params;
+
+  // Validate email (extra guard)
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    throw new Error("Please enter a valid email.");
+  }
+
+  // POST to backend
   const res = await fetch(`${API_BASE}/api/checkout`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ email, name, goal, intent }),
   });
 
-  // Read as text first; parse JSON only if present
   const raw = await res.text();
-  const data = raw ? (() => { try { return JSON.parse(raw); } catch { return { error: raw }; } })() : {};
+  let payload: any = null;
+  try {
+    payload = raw ? JSON.parse(raw) : null;
+  } catch {
+    throw new Error(raw || "Invalid response from server");
+  }
 
   if (!res.ok) {
-    throw new Error((data && (data.error || data.message)) || `HTTP ${res.status}`);
+    throw new Error(payload?.message || payload?.error || `HTTP ${res.status}`);
   }
-  if (!data?.url) {
-    throw new Error("No checkout URL returned");
+
+  if (!payload?.url) {
+    throw new Error("No URL returned from checkout");
   }
-  window.location.href = data.url; // Stripe Checkout
+
+  // Redirect to Stripe
+  window.location.href = payload.url;
 }
