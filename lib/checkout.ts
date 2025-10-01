@@ -1,27 +1,24 @@
-// lib/checkout.ts
-import { loadStripe } from '@stripe/stripe-js';
+export const API_BASE =
+  (process.env.NEXT_PUBLIC_API_BASE || "https://api.willpowerfitnessai.com").replace(/\/$/, "");
 
-const PK = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '').trim();
-const PRICE_ID = (process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || '').trim();
-
-export async function startCheckout(email?: string) {
-  if (!PK) throw new Error('Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
-  if (!PRICE_ID) throw new Error('Missing NEXT_PUBLIC_STRIPE_PRICE_ID');
-
-  const stripe = await loadStripe(PK);
-  const successUrl = `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}${
-    email ? `&email=${encodeURIComponent(email)}` : ''
-  }`;
-  const cancelUrl = `${window.location.origin}/subscribe?canceled=1`;
-
-  const { error } = await stripe!.redirectToCheckout({
-    mode: 'subscription',
-    lineItems: [{ price: PRICE_ID, quantity: 1 }],
-    customerEmail: email || undefined,
-    allowPromotionCodes: true,
-    successUrl,
-    cancelUrl,
+export async function startBackendCheckout(
+  payload: { email: string; name?: string; goal?: string; intent?: string }
+) {
+  const res = await fetch(`${API_BASE}/api/checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 
-  if (error) throw error;
+  // Read as text first; parse JSON only if present
+  const raw = await res.text();
+  const data = raw ? (() => { try { return JSON.parse(raw); } catch { return { error: raw }; } })() : {};
+
+  if (!res.ok) {
+    throw new Error((data && (data.error || data.message)) || `HTTP ${res.status}`);
+  }
+  if (!data?.url) {
+    throw new Error("No checkout URL returned");
+  }
+  window.location.href = data.url; // Stripe Checkout
 }

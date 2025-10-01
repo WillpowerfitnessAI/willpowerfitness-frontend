@@ -1,13 +1,9 @@
 // pages/subscribe.js
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { loadStripe } from "@stripe/stripe-js";
+import { startBackendCheckout } from "../lib/checkout";
 
-// ---- ENV ----
-const PK = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "").trim();
-const PRICE_ID = (process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || "").trim();
-
-// Optional: instant bypass via Payment Link (no Stripe.js needed)
+// Optional: instant bypass via Payment Link (leave OFF if you want backend)
 const USE_PAYMENT_LINK =
   (process.env.NEXT_PUBLIC_USE_PAYMENT_LINK || "").toString().toLowerCase() === "1" ||
   (process.env.NEXT_PUBLIC_USE_PAYMENT_LINK || "").toString().toLowerCase() === "true";
@@ -37,7 +33,7 @@ export default function SubscribePage() {
       // Remember last email so /success can recover it if Stripe doesn't echo it back
       try { localStorage.setItem("wp_last_email", email || ""); } catch {}
 
-      // 0) Optional: Payment Link bypass
+      // 0) Optional: Payment Link bypass (for testing only)
       if (USE_PAYMENT_LINK && STRIPE_PAYMENT_LINK) {
         const u = new URL(STRIPE_PAYMENT_LINK);
         if (email) u.searchParams.set("prefilled_email", email);
@@ -45,28 +41,13 @@ export default function SubscribePage() {
         return;
       }
 
-      // 1) Guard rails
-      if (!PK) throw new Error("Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY");
-      if (!PRICE_ID) throw new Error("Missing NEXT_PUBLIC_STRIPE_PRICE_ID");
+      // 1) Backend-driven Stripe Checkout (this will redirect)
+      await startBackendCheckout({ email, name, goal, intent: intent || "join" });
 
-      // 2) Client-only Stripe Checkout
-      const stripe = await loadStripe(PK);
-      const successUrl = `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}${email ? `&email=${encodeURIComponent(email)}` : ""}`;
-      const cancelUrl = `${window.location.origin}/subscribe?canceled=1`;
-
-      const { error } = await stripe.redirectToCheckout({
-        mode: "subscription",
-        lineItems: [{ price: PRICE_ID, quantity: 1 }],
-        successUrl,
-        cancelUrl,
-        customerEmail: email || undefined,
-        allowPromotionCodes: true,
-      });
-
-      if (error) throw error;
-    } catch (e) {
-      setErr(e?.message || "Checkout failed");
-      setLoading(false); // only stop spinner if we didn’t navigate away
+      // no setLoading(false) here — you’ll navigate away to Stripe
+    } catch (error) {
+      setErr(error?.message || "Checkout failed");
+      setLoading(false);
     }
   }
 
