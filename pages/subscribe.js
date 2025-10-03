@@ -1,10 +1,9 @@
-// pages/subscribe.js
+// /pages/subscribe.js
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { startBackendCheckout } from "../lib/checkout";
 
-// Optional: instant bypass via Payment Link (useful only for testing)
-// Make sure NEXT_PUBLIC_USE_PAYMENT_LINK is FALSE when using the backend flow.
+// Optional: instant bypass via Payment Link (for testing only).
 const USE_PAYMENT_LINK =
   (process.env.NEXT_PUBLIC_USE_PAYMENT_LINK || "")
     .toString()
@@ -26,6 +25,19 @@ export default function SubscribePage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  // ---------------- Anti-autofill + clear on mount ----------------
+  useEffect(() => {
+    setName("");
+    setGoal("");
+    setEmail("");
+    setPassword("");
+    try {
+      // if we ever persisted anything locally in earlier versions, wipe it
+      localStorage.removeItem("subscribeForm");
+    } catch {}
+  }, []);
+
+  // If coming from /success prefill the email from query string (readonly)
   useEffect(() => {
     if (typeof qEmail === "string" && qEmail.includes("@")) setEmail(qEmail);
   }, [qEmail]);
@@ -36,12 +48,12 @@ export default function SubscribePage() {
     setErr("");
 
     try {
-      // Remember last email so /success can recover it if Stripe doesn't echo it back
+      // Remember last email purely for /success recovery (Stripe sometimes omits it)
       try {
         localStorage.setItem("wp_last_email", email || "");
       } catch {}
 
-      // 0) Optional: Payment Link bypass (for quick testing only)
+      // 0) Optional Payment Link bypass (testing only)
       if (USE_PAYMENT_LINK && STRIPE_PAYMENT_LINK) {
         const u = new URL(STRIPE_PAYMENT_LINK);
         if (email) u.searchParams.set("prefilled_email", email);
@@ -49,10 +61,13 @@ export default function SubscribePage() {
         return;
       }
 
-      // 1) Backend-driven Stripe Checkout (this will redirect)
-      await startBackendCheckout({ email, name, goal, intent: intent || "join" });
-
-      // No setLoading(false) here; you’ll be navigating to Stripe
+      // 1) Backend-driven Stripe Checkout (redirects to Stripe)
+      await startBackendCheckout({
+        email: (email || "").trim().toLowerCase(),
+        name,
+        goal,
+        intent: intent || "join",
+      });
     } catch (error) {
       setErr(error?.message || "Checkout failed");
       setLoading(false);
@@ -61,66 +76,76 @@ export default function SubscribePage() {
 
   return (
     <main className="min-h-screen px-6 py-12 text-white">
-      <h1 className="text-3xl font-bold mb-6">Start Elite Access</h1>
+      <h1 className="mb-6 text-3xl font-bold">Start Elite Access</h1>
 
-      <form onSubmit={handleSubmit} className="max-w-xl space-y-4">
+      {/* Turn off browser autofill, and use non-standard names on inputs */}
+      <form onSubmit={handleSubmit} className="max-w-xl space-y-4" autoComplete="off">
         <div>
-          <label className="block text-sm mb-1">Full name</label>
+          <label className="mb-1 block text-sm">Full name</label>
           <input
-            className="w-full rounded-md px-3 py-2 bg-black/40 border border-white/10 outline-none"
+            className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2 outline-none"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Willie Owens"
             disabled={loading}
+            autoComplete="off"
+            name="wfs-name"
           />
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Your primary goal</label>
+          <label className="mb-1 block text-sm">Your primary goal</label>
           <textarea
-            className="w-full rounded-md px-3 py-2 bg-black/40 border border-white/10 outline-none"
+            className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2 outline-none"
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
             placeholder="weight loss"
             rows={3}
             disabled={loading}
+            autoComplete="off"
+            name="wfs-goal"
           />
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Email</label>
+          <label className="mb-1 block text-sm">Email</label>
           <input
             type="email"
-            className="w-full rounded-md px-3 py-2 bg-black/40 border border-white/10 outline-none"
+            className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2 outline-none"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             required
             disabled={loading || !!qEmail}
             readOnly={!!qEmail}
+            autoComplete="off"
+            inputMode="email"
+            name="wfs-email"
           />
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Password</label>
+          <label className="mb-1 block text-sm">Password</label>
           <input
             type="password"
-            className="w-full rounded-md px-3 py-2 bg-black/40 border border-white/10 outline-none"
+            className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2 outline-none"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             disabled={loading}
+            autoComplete="new-password"
+            name="wfs-pass"
           />
-          <p className="text-xs text-white/60 mt-1">
+          <p className="mt-1 text-xs text-white/60">
             (Password isn’t required for checkout—account was created on the previous step.)
           </p>
         </div>
 
-        {err ? <p className="text-red-400 text-sm">{err}</p> : null}
+        {err ? <p className="text-sm text-red-400">{err}</p> : null}
 
         <button
           type="submit"
-          className="rounded-md bg-teal-500 hover:bg-teal-600 px-5 py-2 font-medium disabled:opacity-60"
+          className="rounded-md bg-teal-500 px-5 py-2 font-medium hover:bg-teal-600 disabled:opacity-60"
           disabled={loading || !email}
         >
           {loading ? "Redirecting..." : "Continue"}
